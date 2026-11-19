@@ -1,0 +1,8 @@
+{
+  "name": "SaveBite",
+  "description": "Surplus dining and food rescue marketplace connecting local bakeries, cafes, and restaurants with conscious diners.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
