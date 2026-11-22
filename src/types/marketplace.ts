@@ -16,6 +16,7 @@ export type PaymentStatus =
   | 'Paid'
   | 'Pending (Cash on Pickup)'
   | 'Free Claim'
+  | 'Awaiting Payment' // e-wallet sudah dipesan, belum dibayar (menunggu webhook)
   | 'Failed';
 
 export type PickupStatus = 'Ready for Pickup' | 'Completed' | 'Cancelled';
@@ -116,7 +117,10 @@ export interface FoodListing {
   isWeekendSpecial?: boolean;
   isBestDeal?: boolean;
   isRecommended?: boolean;
-  coordinates: { x: number; y: number }; // 0-100 map percentages
+  coordinates: { x: number; y: number }; // 0-100 map percentages (DEPRECATED, dihitung dari lat/lng oleh src/api; hapus saat peta Leaflet jadi)
+  lat?: number; // koordinat asli (dari DB)
+  lng?: number;
+  isActive?: boolean;
   // Explore & Gamification enrichment
   areaId?: string;
   pokestopCode?: string;
@@ -148,6 +152,10 @@ export interface OrderRecord {
   pickupStatus: PickupStatus;
   customerName: string;
   createdAt: string;
+  // --- diisi oleh src/api (data dari DB) ---
+  orderId?: string; // uuid di DB. `id` di atas = kode order yang tampil (TG-123456)
+  qrToken?: string; // isi QR untuk consumer (jangan ditampilkan sebagai teks)
+  createdAtIso?: string;
 }
 
 export interface LocationOption {
@@ -174,4 +182,7 @@ export interface MerchantAccount {
   address: string;
   neighborhood: string;
   rating: number;
+  lat?: number;
+  lng?: number;
+  isOpen?: boolean;
 }
