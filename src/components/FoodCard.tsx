@@ -20,7 +20,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({
   onQuickAction,
 }) => {
   const [imgError, setImgError] = useState(false);
-  const isFree = listing.discountedPrice === 0;
+  const isFree = listing.discountedPrice <= 0 || listing.discountPercent >= 100;
   const isSoldOut = listing.stock <= 0;
   const isAlmostGone = listing.stock > 0 && listing.stock <= 3;
 
@@ -92,9 +92,9 @@ export const FoodCard: React.FC<FoodCardProps> = ({
             onSelect(listing);
           }
         }}
-        className="group flex cursor-pointer items-stretch gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-2.5 transition-colors hover:border-[#1A1A1A]/30 hover:bg-white focus-visible:outline-2 focus-visible:outline-black sm:gap-3.5 sm:p-3"
+        className="group flex cursor-pointer items-stretch gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-2.5 transition-colors hover:border-[#1A1A1A]/30 hover:bg-white focus-visible:outline-2 focus-visible:outline-black dark:border-[#2A2D2A] dark:bg-[#161816] dark:hover:border-[#3E433E] dark:hover:bg-[#1D201D] dark:focus-visible:outline-white sm:gap-3.5 sm:p-3"
       >
-        <div className="relative h-24 w-22 shrink-0 overflow-hidden rounded-lg bg-[#EAE7E7] sm:w-28">
+        <div className="relative h-24 w-22 shrink-0 overflow-hidden rounded-lg bg-[#EAE7E7] dark:bg-[#242724] sm:w-28">
           {!imgError ? (
             <img
               src={listing.image}
@@ -104,7 +104,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[#6B6B6B]">
+            <div className="flex h-full w-full items-center justify-center text-[#6B6B6B] dark:text-[#A3A8A3]">
               <Utensils className="h-5 w-5" />
             </div>
           )}
@@ -120,24 +120,24 @@ export const FoodCard: React.FC<FoodCardProps> = ({
         <div className="flex min-w-0 flex-1 flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-1.5">
-              <p className="truncate text-[11px] font-medium text-[#6B6B6B] sm:text-xs">
+              <p className="truncate text-[11px] font-medium text-[#6B6B6B] dark:text-[#A3A8A3] sm:text-xs">
                 {listing.merchantName} · {listing.distanceKm.toFixed(1)} km
               </p>
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#1A1A1A] tabular-nums sm:text-xs">
-                <Star className="h-3 w-3 fill-[#1A1A1A] text-[#1A1A1A] sm:h-3.5 sm:w-3.5" />
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#1A1A1A] tabular-nums dark:text-[#F3F4F6] sm:text-xs">
+                <Star className="h-3 w-3 fill-[#1A1A1A] text-[#1A1A1A] dark:fill-white dark:text-white sm:h-3.5 sm:w-3.5" />
                 {listing.rating.toFixed(1)}
               </span>
             </div>
-            <h3 className="mt-0.5 truncate font-display text-sm font-semibold text-[#1A1A1A]">
+            <h3 className="mt-0.5 truncate font-display text-sm font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
               {listing.title}
             </h3>
-            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#6B6B6B] sm:text-xs">
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3] sm:text-xs">
               <Clock className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
               <span className="truncate">{listing.pickupWindow}</span>
               {isAlmostGone && (
                 <>
                   <span>·</span>
-                  <span className="shrink-0 font-semibold text-[#9A5B00]">
+                  <span className="shrink-0 font-semibold text-[#9A5B00] dark:text-[#FFB020]">
                     {listing.stock} left
                   </span>
                 </>
@@ -147,11 +147,11 @@ export const FoodCard: React.FC<FoodCardProps> = ({
 
           <div className="mt-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
-              <span className="font-display text-sm font-bold text-[#006D37] tabular-nums sm:text-base">
+              <span className="font-display text-sm font-bold text-[#006D37] tabular-nums dark:text-[#06C167] sm:text-base">
                 {formatRupiah(listing.discountedPrice)}
               </span>
               {!isFree && (
-                <span className="text-[11px] text-[#6B6B6B] line-through tabular-nums sm:text-xs">
+                <span className="text-[11px] text-[#6B6B6B] line-through tabular-nums dark:text-[#848A84] sm:text-xs">
                   {formatRupiah(listing.originalPrice)}
                 </span>
               )}
@@ -165,10 +165,10 @@ export const FoodCard: React.FC<FoodCardProps> = ({
               }}
               className={`min-h-[38px] shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-transform active:scale-[0.98] sm:px-3 sm:text-xs ${
                 isSoldOut
-                  ? 'cursor-not-allowed bg-[#E5E5E5] text-[#9A9A9A]'
+                  ? 'cursor-not-allowed bg-[#E5E5E5] text-[#9A9A9A] dark:bg-[#252825] dark:text-[#6B6F6B]'
                   : isFree
                   ? 'bg-[#06C167] text-[#00210D] hover:bg-[#05b05d]'
-                  : 'bg-black text-white hover:bg-[#1B1B1B]'
+                  : 'bg-black text-white hover:bg-[#1B1B1B] dark:bg-white dark:text-[#0D0E0D] dark:hover:bg-[#E5E5E5]'
               }`}
             >
               {isSoldOut ? 'Sold out' : isFree ? 'Claim Free' : 'Reserve'}
@@ -195,10 +195,10 @@ export const FoodCard: React.FC<FoodCardProps> = ({
           onSelect(listing);
         }
       }}
-      className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all focus-visible:outline-2 focus-visible:outline-black ${widthClass} ${
+      className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all focus-visible:outline-2 focus-visible:outline-black dark:focus-visible:outline-white ${widthClass} ${
         isDark
           ? 'border-white/10 bg-[#1F1F1F] text-white hover:border-white/25'
-          : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:border-[#1A1A1A]/25 hover:bg-white'
+          : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:border-[#1A1A1A]/25 hover:bg-white dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:border-[#3E433E] dark:hover:bg-[#1D201D]'
       }`}
     >
       {renderImage(variant === 'spotlight' ? 'h-48 sm:h-60' : 'h-38 sm:h-40')}
@@ -206,11 +206,11 @@ export const FoodCard: React.FC<FoodCardProps> = ({
       <div className="flex flex-1 flex-col justify-between p-3 sm:p-3.5">
         <div>
           <div className="flex items-center justify-between gap-2 text-xs">
-            <span className={`truncate font-medium ${isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B]'}`}>
+            <span className={`truncate font-medium ${isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B] dark:text-[#A3A8A3]'}`}>
               {listing.merchantName}
             </span>
             <span className="inline-flex shrink-0 items-center gap-1 font-semibold tabular-nums">
-              <Star className={`h-3.5 w-3.5 ${isDark ? 'fill-white text-white' : 'fill-[#1A1A1A] text-[#1A1A1A]'}`} />
+              <Star className={`h-3.5 w-3.5 ${isDark ? 'fill-white text-white' : 'fill-[#1A1A1A] text-[#1A1A1A] dark:fill-white dark:text-white'}`} />
               {listing.rating.toFixed(1)}
             </span>
           </div>
@@ -221,7 +221,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({
 
           <div
             className={`mt-1.5 flex items-center gap-1.5 text-xs ${
-              isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B]'
+              isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B] dark:text-[#A3A8A3]'
             }`}
           >
             <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
@@ -236,12 +236,12 @@ export const FoodCard: React.FC<FoodCardProps> = ({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5 border-black/5 dark:border-white/10">
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-black/5 pt-2.5 dark:border-white/10">
           <div className="flex min-w-0 flex-col">
             <div className="flex flex-wrap items-baseline gap-1.5">
               <span
                 className={`font-display text-base font-bold leading-none tabular-nums sm:text-lg ${
-                  isDark ? 'text-[#06C167]' : 'text-[#006D37]'
+                  isDark ? 'text-[#06C167]' : 'text-[#006D37] dark:text-[#06C167]'
                 }`}
               >
                 {formatRupiah(listing.discountedPrice)}
@@ -249,14 +249,14 @@ export const FoodCard: React.FC<FoodCardProps> = ({
               {!isFree && (
                 <span
                   className={`text-[11px] line-through tabular-nums sm:text-xs ${
-                    isDark ? 'text-[#848484]' : 'text-[#6B6B6B]'
+                    isDark ? 'text-[#848484]' : 'text-[#6B6B6B] dark:text-[#848A84]'
                   }`}
                 >
                   {formatRupiah(listing.originalPrice)}
                 </span>
               )}
             </div>
-            <span className={`mt-0.5 text-[11px] tabular-nums ${isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B]'}`}>
+            <span className={`mt-0.5 text-[11px] tabular-nums ${isDark ? 'text-[#A6A6A6]' : 'text-[#6B6B6B] dark:text-[#A3A8A3]'}`}>
               {isSoldOut
                 ? 'Unavailable'
                 : isFree
@@ -274,12 +274,12 @@ export const FoodCard: React.FC<FoodCardProps> = ({
             }}
             className={`min-h-[40px] shrink-0 rounded-lg px-3 py-2 font-display text-xs font-semibold whitespace-nowrap transition-transform active:scale-[0.98] sm:px-3.5 ${
               isSoldOut
-                ? 'cursor-not-allowed bg-[#E5E5E5] text-[#9A9A9A]'
+                ? 'cursor-not-allowed bg-[#E5E5E5] text-[#9A9A9A] dark:bg-[#252825] dark:text-[#6B6F6B]'
                 : isFree
                 ? 'bg-[#06C167] text-[#00210D] hover:bg-[#05b05d]'
                 : isDark
                 ? 'bg-white text-black hover:bg-[#EAE7E7]'
-                : 'bg-black text-white hover:bg-[#1B1B1B]'
+                : 'bg-black text-white hover:bg-[#1B1B1B] dark:bg-white dark:text-[#0D0E0D] dark:hover:bg-[#E5E5E5]'
             }`}
           >
             {isSoldOut ? 'Sold out' : isFree ? 'Claim for Free' : 'Reserve'}

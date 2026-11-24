@@ -6,18 +6,26 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
+  Database,
+  Globe,
   HelpCircle,
   Info,
   Leaf,
   Lock,
   LogOut,
   MapPin,
+  Moon,
+  Navigation,
   Pencil,
   Plus,
   RefreshCw,
+  Settings,
   Share2,
   ShieldCheck,
+  Smartphone,
+  Star,
   Store,
+  Sun,
   Trash2,
   UserCheck,
   X,
@@ -34,6 +42,7 @@ import {
   LOCATION_OPTIONS,
   formatRupiah,
 } from '../data/mockMarketplace';
+import { ShareImpactModal } from './ShareImpactModal';
 
 export interface CustomerProfileData {
   name: string;
@@ -55,6 +64,8 @@ interface ConsumerProfileProps {
   onNavigateOrders: () => void;
   onLogout: () => void;
   onResetDemoData?: () => void;
+  theme: 'light' | 'dark';
+  onChangeTheme: (next: 'light' | 'dark') => void;
 }
 
 type ProfileModalType =
@@ -63,6 +74,7 @@ type ProfileModalType =
   | 'dietary'
   | 'alerts'
   | 'security'
+  | 'settings'
   | 'help'
   | 'about'
   | null;
@@ -164,8 +176,12 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
   onNavigateOrders,
   onLogout,
   onResetDemoData,
+  theme,
+  onChangeTheme,
 }) => {
   const [activeModal, setActiveModal] = useState<ProfileModalType>(null);
+  const [showThemeSheet, setShowThemeSheet] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -321,6 +337,10 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
     .filter((o) => o.pickupStatus !== 'Cancelled')
     .reduce((acc, o) => acc + o.quantity, 0);
   const co2SavedKg = (rescuedBags * 2.5).toFixed(1);
+  const storesExploredCount = Math.max(
+    collectedStampsCount,
+    new Set(orders.filter((o) => o.pickupStatus !== 'Cancelled').map((o) => o.merchantId)).size
+  );
 
   // Dynamic Subtitles for Settings Rows
   const linkedWalletNames = wallets.filter((w) => w.linked).map((w) => w.id);
@@ -349,23 +369,8 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
     ? 'Verified account · 2FA OTP aktif'
     : 'Verified consumer account';
 
-  const handleShareImpact = async () => {
-    const shareText = `Aku sudah menyelamatkan ${rescuedBags} bag makanan (${co2SavedKg} kg CO2e dihemat & hemat ${formatRupiah(totalSaved)}) di TuGuTuGu!`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'TuGuTuGu Food Rescue Impact', text: shareText });
-        showToast('Impact berhasil dibagikan');
-        return;
-      } catch {
-        // fallback to clipboard
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(shareText);
-      showToast('Ringkasan impact disalin ke clipboard');
-    } catch {
-      showToast('Ringkasan impact siap dibagikan');
-    }
+  const handleShareImpact = () => {
+    setShareModalOpen(true);
   };
 
   const handleAddLocation = (e: React.FormEvent) => {
@@ -414,15 +419,15 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
     <div className="space-y-5 pt-3 pb-10 sm:space-y-6">
       {/* Feedback Toast */}
       {toastMsg && (
-        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white shadow-lg">
+        <div className="fixed top-4 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white shadow-lg dark:border dark:border-[#2E322E] dark:bg-[#1E211E]">
           {toastMsg}
         </div>
       )}
 
       {/* Consumer Identity Card */}
-      <section className="flex flex-col justify-between gap-4 rounded-2xl border border-[#E5E5E5] bg-[#F6F6F6] p-4 sm:flex-row sm:items-center sm:p-5">
+      <section className="flex flex-col justify-between gap-4 rounded-2xl border border-[#E5E5E5] bg-[#F6F6F6] p-4 sm:flex-row sm:items-center sm:p-5 dark:border-[#2A2D2A] dark:bg-[#161816]">
         <div className="flex items-center gap-3.5 sm:gap-4">
-          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-full bg-black font-display text-lg font-bold text-white sm:h-14 sm:w-14">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-full bg-black font-display text-lg font-bold text-white sm:h-14 sm:w-14 dark:bg-[#06C167] dark:text-[#00210D]">
             {profile.name
               .split(' ')
               .map((n) => n[0])
@@ -432,19 +437,19 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="truncate font-display text-lg font-bold text-[#1A1A1A] sm:text-xl">
+              <h1 className="truncate font-display text-lg font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
                 {profile.name}
               </h1>
               <button
                 type="button"
                 onClick={() => setActiveModal('security')}
                 aria-label="Edit profil"
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E5] bg-white text-[#4C4546] hover:text-black"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E5E5E5] bg-white text-[#4C4546] hover:text-black dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#A3A8A3] dark:hover:text-white"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="truncate text-xs text-[#6B6B6B] sm:text-sm">
+            <p className="truncate text-xs text-[#6B6B6B] sm:text-sm dark:text-[#A3A8A3]">
               {profile.email} · {collectedStampsCount} Stempel Toko
             </p>
           </div>
@@ -453,7 +458,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
         <button
           type="button"
           onClick={onNavigateOrders}
-          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#E5E5E5] bg-white px-4 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] sm:w-auto"
+          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#E5E5E5] bg-white px-4 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] sm:w-auto dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
         >
           View My Orders ({orders.length})
         </button>
@@ -462,35 +467,35 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
       {/* Food Rescue Impact */}
       <section aria-labelledby="impact-heading">
         <div className="mb-2.5 flex items-center justify-between gap-2">
-          <h2 id="impact-heading" className="font-display text-base font-bold text-[#1A1A1A]">
+          <h2 id="impact-heading" className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
             Your Food Rescue Impact
           </h2>
           <button
             type="button"
             onClick={handleShareImpact}
-            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7]"
+            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-xs font-semibold text-[#1A1A1A] transition-colors hover:border-[#CCCCCC] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:border-[#3E433E] dark:hover:bg-[#272B27]"
           >
-            <Share2 className="h-3.5 w-3.5 text-[#006D37]" />
+            <Share2 className="h-3.5 w-3.5 text-[#006D37] dark:text-[#06C167]" />
             <span>Share</span>
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
-          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:p-4">
-            <p className="text-xs text-[#6B6B6B]">Meals Rescued</p>
-            <p className="mt-1 font-display text-xl font-bold text-[#1A1A1A] tabular-nums sm:text-2xl">
+          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:p-4 dark:border-[#2A2D2A] dark:bg-[#161816]">
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Meals Rescued</p>
+            <p className="mt-1 font-display text-xl font-bold text-[#1A1A1A] tabular-nums sm:text-2xl dark:text-[#F5F5F5]">
               {rescuedBags}
             </p>
           </div>
-          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:p-4">
-            <p className="text-xs text-[#6B6B6B]">CO₂e Avoided</p>
-            <p className="mt-1 font-display text-xl font-bold text-[#006D37] tabular-nums sm:text-2xl">
+          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:p-4 dark:border-[#2A2D2A] dark:bg-[#161816]">
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">CO₂e Avoided</p>
+            <p className="mt-1 font-display text-xl font-bold text-[#006D37] tabular-nums sm:text-2xl dark:text-[#06C167]">
               {co2SavedKg} kg
             </p>
           </div>
-          <div className="col-span-2 rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:col-span-1 sm:p-4">
-            <p className="text-xs text-[#6B6B6B]">Money Saved</p>
-            <p className="mt-1 font-display text-xl font-bold text-[#1A1A1A] tabular-nums sm:text-2xl">
+          <div className="col-span-2 rounded-xl border border-[#E5E5E5] bg-white p-3.5 sm:col-span-1 sm:p-4 dark:border-[#2A2D2A] dark:bg-[#161816]">
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Money Saved</p>
+            <p className="mt-1 font-display text-xl font-bold text-[#1A1A1A] tabular-nums sm:text-2xl dark:text-[#F5F5F5]">
               {formatRupiah(totalSaved)}
             </p>
           </div>
@@ -543,10 +548,10 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
 
       {/* Interactive Account Settings List */}
       <section aria-label="Account Settings">
-        <h2 className="mb-2.5 font-display text-base font-bold text-[#1A1A1A]">
+        <h2 className="mb-2.5 font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
           Account &amp; Preferences
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white">
+        <div className="overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white dark:border-[#2A2D2A] dark:bg-[#161816]">
           {(
             [
               {
@@ -579,6 +584,12 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 label: 'Account & Security',
                 detail: securitySubtitle,
               },
+              {
+                id: 'settings',
+                icon: Settings,
+                label: 'Settings',
+                detail: `Theme: ${theme === 'dark' ? 'Dark' : 'Light'} · Bahasa & preferensi aplikasi`,
+              },
             ] as const
           ).map((item, idx) => {
             const Icon = item.icon;
@@ -587,20 +598,22 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => setActiveModal(item.id)}
-                className={`flex min-h-[64px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5 ${
-                  idx !== 0 ? 'border-t border-[#E5E5E5]' : ''
+                className={`flex min-h-[64px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5 dark:hover:bg-[#1E211E] ${
+                  idx !== 0 ? 'border-t border-[#E5E5E5] dark:border-[#2A2D2A]' : ''
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#F5F5F5]">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#1A1A1A]">{item.label}</p>
-                    <p className="truncate text-xs text-[#6B6B6B]">{item.detail}</p>
+                    <p className="truncate text-sm font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                      {item.label}
+                    </p>
+                    <p className="truncate text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">{item.detail}</p>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B]" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B] dark:text-[#A3A8A3]" />
               </button>
             );
           })}
@@ -609,48 +622,50 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
 
       {/* Support & App Info */}
       <section aria-label="Support and Information">
-        <h2 className="mb-2.5 font-display text-base font-bold text-[#1A1A1A]">
+        <h2 className="mb-2.5 font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
           Support &amp; Info
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white">
+        <div className="overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white dark:border-[#2A2D2A] dark:bg-[#161816]">
           <button
             type="button"
             onClick={() => setActiveModal('help')}
-            className="flex min-h-[60px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5"
+            className="flex min-h-[60px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5 dark:hover:bg-[#1E211E]"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#F5F5F5]">
                 <HelpCircle className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#1A1A1A]">Help Center &amp; FAQ</p>
-                <p className="truncate text-xs text-[#6B6B6B]">
+                <p className="truncate text-sm font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  Help Center &amp; FAQ
+                </p>
+                <p className="truncate text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                   Cara kerja Surprise Bag, COD, &amp; Klaim Gratis
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B]" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B] dark:text-[#A3A8A3]" />
           </button>
 
           <button
             type="button"
             onClick={() => setActiveModal('about')}
-            className="flex min-h-[60px] w-full items-center justify-between border-t border-[#E5E5E5] px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5"
+            className="flex min-h-[60px] w-full items-center justify-between border-t border-[#E5E5E5] px-4 py-3.5 text-left transition-colors hover:bg-[#F6F6F6] sm:px-5 dark:border-[#2A2D2A] dark:hover:bg-[#1E211E]"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#F5F5F5]">
                 <Info className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#1A1A1A]">
+                <p className="truncate text-sm font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
                   About TuGuTuGu &amp; Privacy
                 </p>
-                <p className="truncate text-xs text-[#6B6B6B]">
+                <p className="truncate text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                   Versi prototype v1.0 · Penyimpanan lokal aktif
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B]" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6B6B] dark:text-[#A3A8A3]" />
           </button>
         </div>
       </section>
@@ -660,14 +675,14 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
         <button
           type="button"
           onClick={onLogout}
-          className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-2xl border border-[#F9C6BE] bg-[#FFF0ED] px-4 font-display text-sm font-bold text-[#B42318] transition-colors hover:bg-[#FFE3DE] active:scale-[0.99]"
+          className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-2xl border border-[#F9C6BE] bg-[#FFF0ED] px-4 font-display text-sm font-bold text-[#B42318] transition-colors hover:bg-[#FFE3DE] active:scale-[0.99] dark:border-[#5C231D] dark:bg-[#2B1412] dark:text-[#FCA5A5] dark:hover:bg-[#3A1B18]"
         >
           <LogOut className="h-4 w-4" />
           <span>Log Out</span>
         </button>
       </section>
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-[#6B6B6B]">
+      <p className="flex items-center justify-center gap-1.5 text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
         <UserCheck className="h-3.5 w-3.5" />
         Signed in as {profile.name} · TuGuTuGu
       </p>
@@ -675,28 +690,29 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
       {/* ==================== MODAL SHELL FOR PROFILE MENUS ==================== */}
       {activeModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4 dark:bg-black/75"
           onClick={() => setActiveModal(null)}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl"
+            className="flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl dark:border dark:border-[#2A2D2A] dark:bg-[#161816]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag pill */}
             <div className="flex justify-center pt-2.5 pb-0.5 sm:hidden">
-              <div className="h-1.5 w-10 rounded-full bg-[#DCD9D9]" />
+              <div className="h-1.5 w-10 rounded-full bg-[#DCD9D9] dark:bg-[#3A3E3A]" />
             </div>
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5">
-              <h2 className="font-display text-base font-bold text-[#1A1A1A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5 dark:border-[#2A2D2A]">
+              <h2 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                 {activeModal === 'locations' && 'Saved Pickup Locations'}
                 {activeModal === 'wallets' && 'Linked E-Wallets'}
                 {activeModal === 'dietary' && 'Dietary Preferences'}
                 {activeModal === 'alerts' && 'Midnight Deal & Pickup Alerts'}
                 {activeModal === 'security' && 'Account & Security'}
+                {activeModal === 'settings' && 'Settings'}
                 {activeModal === 'help' && 'Help Center & FAQ'}
                 {activeModal === 'about' && 'About TuGuTuGu & Privacy'}
               </h2>
@@ -704,7 +720,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 type="button"
                 onClick={() => setActiveModal(null)}
                 aria-label="Close modal"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E] dark:hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -715,7 +731,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
               {/* 1. SAVED PICKUP LOCATIONS */}
               {activeModal === 'locations' && (
                 <>
-                  <p className="text-xs text-[#6B6B6B]">
+                  <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                     Pilih area utama untuk menampilkan toko dan penawaran terdekat di layar Home.
                   </p>
 
@@ -729,7 +745,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           className={`flex items-center justify-between gap-2 rounded-xl border p-3.5 ${
                             isActive
                               ? 'border-[#06C167] bg-[#06C167]/10'
-                              : 'border-[#E5E5E5] bg-[#F6F6F6]'
+                              : 'border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]'
                           }`}
                         >
                           <button
@@ -742,7 +758,9 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           >
                             <span
                               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                                isActive ? 'bg-[#06C167] text-[#00210D]' : 'bg-white text-[#1A1A1A]'
+                                isActive
+                                  ? 'bg-[#06C167] text-[#00210D]'
+                                  : 'bg-white text-[#1A1A1A] dark:bg-[#272B27] dark:text-[#F5F5F5]'
                               }`}
                             >
                               {isActive ? (
@@ -752,10 +770,10 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                               )}
                             </span>
                             <div className="min-w-0">
-                              <p className="truncate font-display text-sm font-bold text-[#1A1A1A]">
+                              <p className="truncate font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                                 {loc.label}
                               </p>
-                              <p className="truncate text-xs text-[#6B6B6B]">
+                              <p className="truncate text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                                 {loc.area}, {loc.city}
                               </p>
                             </div>
@@ -770,7 +788,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                                 showToast('Lokasi dihapus');
                               }}
                               aria-label="Hapus lokasi"
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-white hover:text-[#B42318]"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-white hover:text-[#B42318] dark:text-[#A3A8A3] dark:hover:bg-[#272B27] dark:hover:text-[#FCA5A5]"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -782,26 +800,28 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
 
                   <form
                     onSubmit={handleAddLocation}
-                    className="space-y-2.5 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5"
+                    className="space-y-2.5 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]"
                   >
-                    <p className="text-xs font-bold text-[#1A1A1A]">Tambah Lokasi Baru</p>
+                    <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                      Tambah Lokasi Baru
+                    </p>
                     <input
                       type="text"
                       value={newLocLabel}
                       onChange={(e) => setNewLocLabel(e.target.value)}
                       placeholder="Label (mis. Kos Setiabudi / Kantor Kuningan)"
-                      className="min-h-[42px] w-full rounded-lg border border-[#E5E5E5] bg-white px-3 text-xs text-[#1A1A1A] outline-none focus:border-black"
+                      className="min-h-[42px] w-full rounded-lg border border-[#E5E5E5] bg-white px-3 text-xs text-[#1A1A1A] outline-none focus:border-black dark:border-[#2E322E] dark:bg-[#141614] dark:text-[#F5F5F5] dark:placeholder:text-[#787F78] dark:focus:border-[#06C167]"
                     />
                     <input
                       type="text"
                       value={newLocArea}
                       onChange={(e) => setNewLocArea(e.target.value)}
                       placeholder="Alamat / Kecamatan"
-                      className="min-h-[42px] w-full rounded-lg border border-[#E5E5E5] bg-white px-3 text-xs text-[#1A1A1A] outline-none focus:border-black"
+                      className="min-h-[42px] w-full rounded-lg border border-[#E5E5E5] bg-white px-3 text-xs text-[#1A1A1A] outline-none focus:border-black dark:border-[#2E322E] dark:bg-[#141614] dark:text-[#F5F5F5] dark:placeholder:text-[#787F78] dark:focus:border-[#06C167]"
                     />
                     <button
                       type="submit"
-                      className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-lg bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B]"
+                      className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-lg bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B] dark:bg-[#06C167] dark:text-[#00210D] dark:hover:bg-[#05b05d]"
                     >
                       <Plus className="h-4 w-4" />
                       Simpan &amp; Aktifkan Lokasi
@@ -813,7 +833,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
               {/* 2. LINKED E-WALLETS */}
               {activeModal === 'wallets' && (
                 <>
-                  <p className="text-xs text-[#6B6B6B]">
+                  <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                     Atur e-wallet terhubung dan pilih metode default saat checkout berbayar.
                   </p>
                   <div className="space-y-2.5">
@@ -825,7 +845,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           className={`rounded-xl border p-3.5 ${
                             isDefault
                               ? 'border-[#06C167] bg-[#06C167]/10'
-                              : 'border-[#E5E5E5] bg-[#F6F6F6]'
+                              : 'border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -836,10 +856,12 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                                 {w.label}
                               </span>
                               <div>
-                                <p className="text-xs font-bold text-[#1A1A1A]">
+                                <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                                   {w.linked ? w.balanceLabel : 'Belum Terhubung'}
                                 </p>
-                                <p className="text-[11px] text-[#6B6B6B]">{w.accountHint}</p>
+                                <p className="text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
+                                  {w.accountHint}
+                                </p>
                               </div>
                             </div>
 
@@ -855,8 +877,8 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                               }}
                               className={`min-h-[34px] rounded-lg border px-3 text-xs font-semibold ${
                                 w.linked
-                                  ? 'border-[#E5E5E5] bg-white text-[#1A1A1A]'
-                                  : 'border-black bg-black text-white'
+                                  ? 'border-[#E5E5E5] bg-white text-[#1A1A1A] dark:border-[#3A3E3A] dark:bg-[#272B27] dark:text-[#F5F5F5]'
+                                  : 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-[#0D0E0D]'
                               }`}
                             >
                               {w.linked ? 'Putuskan' : 'Hubungkan'}
@@ -864,8 +886,8 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           </div>
 
                           {w.linked && (
-                            <div className="mt-2.5 flex items-center justify-between border-t border-black/10 pt-2">
-                              <span className="text-[11px] text-[#4C4546]">
+                            <div className="mt-2.5 flex items-center justify-between border-t border-black/10 pt-2 dark:border-white/10">
+                              <span className="text-[11px] text-[#4C4546] dark:text-[#A3A8A3]">
                                 {isDefault ? 'Dipakai otomatis saat checkout' : 'Tersedia di checkout'}
                               </span>
                               {isDefault ? (
@@ -880,7 +902,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                                     onSelectDefaultWallet(w.id);
                                     showToast(`${w.label} diset sebagai default checkout`);
                                   }}
-                                  className="text-xs font-bold text-[#006D37] hover:underline"
+                                  className="text-xs font-bold text-[#006D37] hover:underline dark:text-[#06C167]"
                                 >
                                   Jadikan Default
                                 </button>
@@ -897,7 +919,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
               {/* 3. DIETARY PREFERENCES */}
               {activeModal === 'dietary' && (
                 <>
-                  <p className="text-xs text-[#6B6B6B]">
+                  <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                     Preferensi ini tersimpan dan otomatis tersinkron dengan filter di tab Explore.
                   </p>
                   <div className="space-y-2.5">
@@ -922,13 +944,13 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     ).map((pref) => (
                       <label
                         key={pref.key}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]"
                       >
                         <div className="min-w-0">
-                          <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                          <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                             {pref.title}
                           </p>
-                          <p className="text-xs text-[#6B6B6B]">{pref.desc}</p>
+                          <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">{pref.desc}</p>
                         </div>
                         <input
                           type="checkbox"
@@ -952,7 +974,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                       setDietaryPrefs({ halal: false, vegetarian: false, nutFree: false });
                       showToast('Semua filter diet direset (All surplus bags)');
                     }}
-                    className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6]"
+                    className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                   >
                     Tampilkan Semua Makanan (Reset)
                   </button>
@@ -987,13 +1009,13 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     ].map((row) => (
                       <label
                         key={row.key}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]"
                       >
                         <div className="min-w-0">
-                          <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                          <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                             {row.title}
                           </p>
-                          <p className="text-xs text-[#6B6B6B]">{row.desc}</p>
+                          <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">{row.desc}</p>
                         </div>
                         <input
                           type="checkbox"
@@ -1011,18 +1033,22 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                   </div>
 
                   {wishlistAlerts.length > 0 && (
-                    <div className="space-y-2 border-t border-[#E5E5E5] pt-3">
-                      <p className="text-xs font-bold text-[#1A1A1A]">
+                    <div className="space-y-2 border-t border-[#E5E5E5] pt-3 dark:border-[#2A2D2A]">
+                      <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         Wishlist Area &amp; Rute Tersimpan
                       </p>
                       {wishlistAlerts.map((wl) => (
                         <label
                           key={wl.id}
-                          className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-white p-3"
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-white p-3 dark:border-[#2E322E] dark:bg-[#1E211E]"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-[#1A1A1A]">{wl.title}</p>
-                            <p className="truncate text-[11px] text-[#6B6B6B]">{wl.criteria}</p>
+                            <p className="truncate text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                              {wl.title}
+                            </p>
+                            <p className="truncate text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
+                              {wl.criteria}
+                            </p>
                           </div>
                           <input
                             type="checkbox"
@@ -1046,7 +1072,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     onClick={() =>
                       showToast('Simulasi alert terkirim: Kuro Midnight Kitchen baru drop 2 bag!')
                     }
-                    className="min-h-[44px] w-full rounded-xl bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B]"
+                    className="min-h-[44px] w-full rounded-xl bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B] dark:bg-[#06C167] dark:text-[#00210D] dark:hover:bg-[#05b05d]"
                   >
                     Kirim Simulasi Notifikasi Alert
                   </button>
@@ -1058,36 +1084,36 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 <>
                   <form onSubmit={handleSaveProfile} className="space-y-3">
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A]">
+                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         Nama Lengkap
                       </label>
                       <input
                         type="text"
                         value={draftName}
                         onChange={(e) => setDraftName(e.target.value)}
-                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white"
+                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:focus:border-[#06C167] dark:focus:bg-[#141614]"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A]">
+                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         Email Terverifikasi
                       </label>
                       <input
                         type="email"
                         value={draftEmail}
                         onChange={(e) => setDraftEmail(e.target.value)}
-                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white"
+                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:focus:border-[#06C167] dark:focus:bg-[#141614]"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A]">
+                      <label className="mb-1 block text-xs font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         Nomor HP
                       </label>
                       <input
                         type="tel"
                         value={draftPhone}
                         onChange={(e) => setDraftPhone(e.target.value)}
-                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white"
+                        className="min-h-[42px] w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-sm text-[#1A1A1A] outline-none focus:border-black focus:bg-white dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:focus:border-[#06C167] dark:focus:bg-[#141614]"
                       />
                     </div>
                     <button
@@ -1098,8 +1124,10 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     </button>
                   </form>
 
-                  <div className="space-y-2.5 border-t border-[#E5E5E5] pt-4">
-                    <p className="text-xs font-bold text-[#1A1A1A]">Keamanan Akun</p>
+                  <div className="space-y-2.5 border-t border-[#E5E5E5] pt-4 dark:border-[#2A2D2A]">
+                    <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                      Keamanan Akun
+                    </p>
                     {[
                       {
                         key: 'twoFactorOtp' as const,
@@ -1114,11 +1142,15 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     ].map((sec) => (
                       <label
                         key={sec.key}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3 dark:border-[#2E322E] dark:bg-[#1E211E]"
                       >
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-[#1A1A1A]">{sec.title}</p>
-                          <p className="text-[11px] text-[#6B6B6B]">{sec.desc}</p>
+                          <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                            {sec.title}
+                          </p>
+                          <p className="text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
+                            {sec.desc}
+                          </p>
                         </div>
                         <input
                           type="checkbox"
@@ -1137,7 +1169,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowPasswordForm((v) => !v)}
-                      className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6]"
+                      className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                     >
                       <Lock className="h-3.5 w-3.5" />
                       {showPasswordForm ? 'Tutup Ubah Kata Sandi' : 'Ubah Kata Sandi'}
@@ -1150,7 +1182,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="Kata sandi baru (min. 6 karakter)"
-                          className="min-h-[40px] flex-1 rounded-lg border border-[#E5E5E5] px-3 text-xs outline-none focus:border-black"
+                          className="min-h-[40px] flex-1 rounded-lg border border-[#E5E5E5] px-3 text-xs outline-none focus:border-black dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:focus:border-[#06C167]"
                         />
                         <button
                           type="button"
@@ -1163,7 +1195,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                             setShowPasswordForm(false);
                             showToast('Kata sandi berhasil diperbarui (simulasi)');
                           }}
-                          className="min-h-[40px] rounded-lg bg-black px-3 text-xs font-semibold text-white"
+                          className="min-h-[40px] rounded-lg bg-black px-3 text-xs font-semibold text-white dark:bg-[#06C167] dark:text-[#00210D]"
                         >
                           Simpan
                         </button>
@@ -1178,7 +1210,7 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                           setActiveModal(null);
                           showToast('Data prototype berhasil direset');
                         }}
-                        className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#F9C6BE] bg-[#FFF0ED] text-xs font-semibold text-[#B42318]"
+                        className="flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border border-[#F9C6BE] bg-[#FFF0ED] text-xs font-semibold text-[#B42318] dark:border-[#5C231D] dark:bg-[#2B1412] dark:text-[#FCA5A5]"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
                         Reset Data Prototype ke Awal
@@ -1188,7 +1220,116 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 </>
               )}
 
-              {/* 6. HELP CENTER & FAQ */}
+              {/* 6. SETTINGS MENU (Change Theme works + standard mockup rows) */}
+              {activeModal === 'settings' && (
+                <div className="space-y-4">
+                  {/* Working Theme Row */}
+                  <div>
+                    <p className="mb-2 text-[11px] font-bold tracking-wide text-[#6B6B6B] uppercase dark:text-[#A3A8A3]">
+                      Appearance
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowThemeSheet(true)}
+                      className="flex min-h-[58px] w-full items-center justify-between rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-4 py-3 text-left transition-colors hover:border-[#CCCCCC] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:hover:border-[#3E433E] dark:hover:bg-[#272B27]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#1A1A1A] dark:bg-[#272B27] dark:text-[#06C167]">
+                          {theme === 'dark' ? (
+                            <Moon className="h-4 w-4" />
+                          ) : (
+                            <Sun className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                            Change Theme
+                          </p>
+                          <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                            Pilih tampilan Light atau Dark
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[#1A1A1A] dark:bg-[#141614] dark:text-[#06C167]">
+                          {theme === 'dark' ? 'Dark' : 'Light'}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-[#6B6B6B] dark:text-[#A3A8A3]" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Typical App Setting Mockup Rows */}
+                  <div>
+                    <p className="mb-2 text-[11px] font-bold tracking-wide text-[#6B6B6B] uppercase dark:text-[#A3A8A3]">
+                      General &amp; System
+                    </p>
+                    <div className="overflow-hidden rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]">
+                      {[
+                        {
+                          icon: Globe,
+                          label: 'Language',
+                          value: 'Bahasa Indonesia',
+                        },
+                        {
+                          icon: Smartphone,
+                          label: 'Sound & Haptics',
+                          value: 'Default',
+                        },
+                        {
+                          icon: Navigation,
+                          label: 'Location Services',
+                          value: 'While Using App',
+                        },
+                        {
+                          icon: Database,
+                          label: 'Data Saver',
+                          value: 'Off',
+                        },
+                        {
+                          icon: Trash2,
+                          label: 'Clear Cache',
+                          value: '18.4 MB',
+                        },
+                        {
+                          icon: Star,
+                          label: 'Rate TuGuTuGu',
+                          value: 'v1.0',
+                        },
+                      ].map((row, idx) => {
+                        const RowIcon = row.icon;
+                        return (
+                          <button
+                            key={row.label}
+                            type="button"
+                            onClick={() =>
+                              showToast(`${row.label} (${row.value}) · Preview menu`)
+                            }
+                            className={`flex min-h-[54px] w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[#EAE7E7] dark:hover:bg-[#272B27] ${
+                              idx !== 0 ? 'border-t border-[#E5E5E5] dark:border-[#2A2D2A]' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <RowIcon className="h-4 w-4 shrink-0 text-[#4C4546] dark:text-[#A3A8A3]" />
+                              <span className="text-sm font-medium text-[#1A1A1A] dark:text-[#F5F5F5]">
+                                {row.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                                {row.value}
+                              </span>
+                              <ChevronRight className="h-4 w-4 text-[#6B6B6B] dark:text-[#A3A8A3]" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 7. HELP CENTER & FAQ */}
               {activeModal === 'help' && (
                 <div className="space-y-2.5">
                   {FAQ_ITEMS.map((faq, i) => {
@@ -1196,24 +1337,24 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                     return (
                       <div
                         key={faq.q}
-                        className="overflow-hidden rounded-xl border border-[#E5E5E5] bg-[#F6F6F6]"
+                        className="overflow-hidden rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]"
                       >
                         <button
                           type="button"
                           onClick={() => setOpenFaqIndex(open ? null : i)}
                           className="flex w-full items-center justify-between gap-2 p-3.5 text-left"
                         >
-                          <span className="font-display text-xs font-bold text-[#1A1A1A] sm:text-sm">
+                          <span className="font-display text-xs font-bold text-[#1A1A1A] sm:text-sm dark:text-[#F5F5F5]">
                             {faq.q}
                           </span>
                           <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-[#6B6B6B] transition-transform ${
+                            className={`h-4 w-4 shrink-0 text-[#6B6B6B] transition-transform dark:text-[#A3A8A3] ${
                               open ? 'rotate-180' : ''
                             }`}
                           />
                         </button>
                         {open && (
-                          <div className="border-t border-[#E5E5E5] bg-white px-3.5 py-3 text-xs leading-relaxed text-[#4C4546]">
+                          <div className="border-t border-[#E5E5E5] bg-white px-3.5 py-3 text-xs leading-relaxed text-[#4C4546] dark:border-[#2E322E] dark:bg-[#161816] dark:text-[#C8CDC8]">
                             {faq.a}
                           </div>
                         )}
@@ -1223,11 +1364,11 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                 </div>
               )}
 
-              {/* 7. ABOUT & PRIVACY */}
+              {/* 8. ABOUT & PRIVACY */}
               {activeModal === 'about' && (
-                <div className="space-y-3 text-xs leading-relaxed text-[#4C4546]">
-                  <div className="rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-4">
-                    <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                <div className="space-y-3 text-xs leading-relaxed text-[#4C4546] dark:text-[#C8CDC8]">
+                  <div className="rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-4 dark:border-[#2E322E] dark:bg-[#1E211E]">
+                    <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                       TuGuTuGu Food Rescue Marketplace
                     </p>
                     <p className="mt-1">
@@ -1235,8 +1376,10 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
                       berkualitas dari toko &amp; restoran lokal dengan harga terjangkau atau gratis.
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#E5E5E5] bg-white p-4">
-                    <p className="font-bold text-[#1A1A1A]">Privasi &amp; Penyimpanan Lokal</p>
+                  <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 dark:border-[#2E322E] dark:bg-[#1E211E]">
+                    <p className="font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                      Privasi &amp; Penyimpanan Lokal
+                    </p>
                     <p className="mt-1">
                       Pada mode prototype ini, seluruh perubahan profil, stempel toko, lokasi,
                       e-wallet default, preferensi diet, dan pengaturan alert disimpan secara lokal di
@@ -1250,6 +1393,121 @@ export const ConsumerProfile: React.FC<ConsumerProfileProps> = ({
           </div>
         </div>
       )}
+
+      {/* ==================== BOTTOM SHEET THEME PICKER ==================== */}
+      {showThemeSheet && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-xs dark:bg-black/75"
+          onClick={() => setShowThemeSheet(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose App Theme"
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl bg-white p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_36px_rgba(0,0,0,0.2)] dark:border-t dark:border-[#2A2D2A] dark:bg-[#161816]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Bottom Sheet Drag Handle */}
+            <div className="mb-3 flex justify-center">
+              <div className="h-1.5 w-10 rounded-full bg-[#DCD9D9] dark:bg-[#3A3E3A]" />
+            </div>
+
+            <div className="flex items-center justify-between pb-3">
+              <div>
+                <h3 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  Choose Theme
+                </h3>
+                <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                  Sesuaikan tampilan TuGuTuGu dengan kenyamanan matamu
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowThemeSheet(false)}
+                aria-label="Tutup pilihan tema"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E] dark:hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeTheme('light');
+                  setShowThemeSheet(false);
+                  showToast('Tema diubah ke Light');
+                }}
+                className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
+                  theme === 'light'
+                    ? 'border-[#06C167] bg-[#06C167]/10 ring-1 ring-[#06C167]'
+                    : 'border-[#E5E5E5] bg-[#F6F6F6] hover:border-[#CCCCCC] dark:border-[#2E322E] dark:bg-[#1E211E] dark:hover:border-[#3E433E]'
+                }`}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1A1A1A] shadow-xs">
+                    <Sun className="h-5 w-5 text-[#F59E0B]" />
+                  </span>
+                  {theme === 'light' && (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#06C167] text-[#00210D]">
+                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="mt-3 font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  Light
+                </p>
+                <p className="mt-0.5 text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                  Cerah &amp; bersih untuk siang hari
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeTheme('dark');
+                  setShowThemeSheet(false);
+                  showToast('Tema diubah ke Dark');
+                }}
+                className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all ${
+                  theme === 'dark'
+                    ? 'border-[#06C167] bg-[#06C167]/12 ring-1 ring-[#06C167]'
+                    : 'border-[#E5E5E5] bg-[#F6F6F6] hover:border-[#CCCCCC] dark:border-[#2E322E] dark:bg-[#1E211E] dark:hover:border-[#3E433E]'
+                }`}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#141614] text-[#06C167] shadow-xs">
+                    <Moon className="h-5 w-5" />
+                  </span>
+                  {theme === 'dark' && (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#06C167] text-[#00210D]">
+                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    </span>
+                  )}
+                </div>
+                <p className="mt-3 font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  Dark
+                </p>
+                <p className="mt-0.5 text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                  Gelap &amp; nyaman di malam hari
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ShareImpactModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        userName={profile.name}
+        rescuedBags={rescuedBags}
+        co2SavedKg={co2SavedKg}
+        totalSaved={totalSaved}
+        storesExploredCount={storesExploredCount}
+        onNotify={showToast}
+      />
     </div>
   );
 };

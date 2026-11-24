@@ -98,7 +98,7 @@ export const HorizontalCarousel: React.FC<HorizontalCarouselProps> = ({
 
   const btnBase = dark
     ? 'border-white/15 bg-[#141414]/90 text-white hover:bg-black'
-    : 'border-[#E5E5E5] bg-white/95 text-[#1A1A1A] hover:bg-white shadow-md';
+    : 'border-[#E5E5E5] bg-white/95 text-[#1A1A1A] hover:bg-white shadow-md dark:border-[#2E322E] dark:bg-[#161816]/95 dark:text-white dark:hover:bg-[#1E211E]';
 
   return (
     <div className="group/carousel relative">

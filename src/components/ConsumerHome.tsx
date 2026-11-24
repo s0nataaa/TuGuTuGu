@@ -97,9 +97,9 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const midnightDeals = listings.filter((l) => l.isMidnightDeal);
-  const freeFood = listings.filter((l) => l.discountedPrice === 0);
+  const freeFood = listings.filter((l) => l.discountedPrice <= 0 || l.discountPercent >= 100);
   const upTo90Off = [...listings]
-    .filter((l) => l.discountedPrice > 0 && l.discountPercent >= 75)
+    .filter((l) => l.discountedPrice > 0 && l.discountPercent < 100 && l.discountPercent >= 75)
     .sort((a, b) => b.discountPercent - a.discountPercent);
   const almostGone = listings.filter((l) => l.stock > 0 && l.stock <= 3);
   const rescueNearYou = [...listings].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 4);
@@ -136,18 +136,18 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
               setLocationOpen((prev) => !prev);
               setNotifOpen(false);
             }}
-            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#F6F6F6] px-3 py-2 text-left transition-colors hover:bg-[#EAE7E7] sm:flex-initial sm:max-w-xs"
+            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#F6F6F6] px-3 py-2 text-left transition-colors hover:bg-[#EAE7E7] sm:flex-initial sm:max-w-xs dark:border dark:border-[#2A2D2A] dark:bg-[#161816] dark:hover:bg-[#1E211E]"
           >
-            <MapPin className="h-4 w-4 shrink-0 text-[#006D37]" />
+            <MapPin className="h-4 w-4 shrink-0 text-[#006D37] dark:text-[#06C167]" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium text-[#6B6B6B] sm:text-[11px]">
+              <p className="text-[10px] font-medium text-[#6B6B6B] sm:text-[11px] dark:text-[#A3A8A3]">
                 Rescuing near
               </p>
-              <p className="truncate font-display text-xs font-bold text-[#1A1A1A] sm:text-sm">
+              <p className="truncate font-display text-xs font-bold text-[#1A1A1A] sm:text-sm dark:text-[#F5F5F5]">
                 {selectedLocation.label}
               </p>
             </div>
-            <ChevronDown className="h-4 w-4 shrink-0 text-[#6B6B6B]" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[#6B6B6B] dark:text-[#A3A8A3]" />
           </button>
 
           {/* Notification Icon */}
@@ -158,7 +158,7 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
               setNotifOpen((prev) => !prev);
               setLocationOpen(false);
             }}
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] transition-colors hover:bg-[#EAE7E7]"
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] transition-colors hover:bg-[#EAE7E7] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
@@ -170,15 +170,15 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
 
           {/* Location Dropdown (Full width on mobile, anchored left on desktop) */}
           {locationOpen && (
-            <div className="absolute top-14 right-0 left-0 z-30 rounded-2xl border border-[#E5E5E5] bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,0.14)] sm:right-auto sm:w-full sm:max-w-sm">
+            <div className="absolute top-14 right-0 left-0 z-30 rounded-2xl border border-[#E5E5E5] bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,0.14)] sm:right-auto sm:w-full sm:max-w-sm dark:border-[#2A2D2A] dark:bg-[#161816] dark:shadow-[0_10px_28px_rgba(0,0,0,0.6)]">
               <div className="mb-2 flex items-center justify-between px-1">
-                <span className="font-display text-sm font-bold text-[#1A1A1A]">
+                <span className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                   Choose Pickup Neighborhood
                 </span>
                 <button
                   type="button"
                   onClick={() => setLocationOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] hover:text-black"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] hover:text-black dark:text-[#A3A8A3] dark:hover:bg-[#1E211E] dark:hover:text-white"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -196,13 +196,19 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
                       }}
                       className={`flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                         active
-                          ? 'bg-black font-semibold text-white'
-                          : 'text-[#1A1A1A] hover:bg-[#F6F6F6]'
+                          ? 'bg-black font-semibold text-white dark:bg-white dark:text-[#0D0E0D]'
+                          : 'text-[#1A1A1A] hover:bg-[#F6F6F6] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]'
                       }`}
                     >
                       <div className="min-w-0 pr-2">
                         <p className="truncate">{loc.label}</p>
-                        <p className={`text-xs ${active ? 'text-white/75' : 'text-[#6B6B6B]'}`}>
+                        <p
+                          className={`text-xs ${
+                            active
+                              ? 'text-white/75 dark:text-[#4C4546]'
+                              : 'text-[#6B6B6B] dark:text-[#A3A8A3]'
+                          }`}
+                        >
                           {loc.area}, {loc.city}
                         </p>
                       </div>
@@ -220,15 +226,17 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
 
           {/* Notifications Popover (Full width on mobile, anchored right on desktop) */}
           {notifOpen && (
-            <div className="absolute top-14 right-0 left-0 z-30 rounded-2xl border border-[#E5E5E5] bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.14)] sm:left-auto sm:w-full sm:max-w-sm">
+            <div className="absolute top-14 right-0 left-0 z-30 rounded-2xl border border-[#E5E5E5] bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.14)] sm:left-auto sm:w-full sm:max-w-sm dark:border-[#2A2D2A] dark:bg-[#161816] dark:shadow-[0_10px_28px_rgba(0,0,0,0.6)]">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-sm font-bold text-[#1A1A1A]">Notifications</h3>
+                <h3 className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  Notifications
+                </h3>
                 <div className="flex items-center gap-3">
                   {unreadCount > 0 && (
                     <button
                       type="button"
                       onClick={onMarkAllRead}
-                      className="text-xs font-semibold text-[#006D37] hover:underline"
+                      className="text-xs font-semibold text-[#006D37] hover:underline dark:text-[#06C167]"
                     >
                       Mark all read
                     </button>
@@ -236,7 +244,7 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
                   <button
                     type="button"
                     onClick={() => setNotifOpen(false)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] hover:text-black"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] hover:text-black dark:text-[#A3A8A3] dark:hover:bg-[#1E211E] dark:hover:text-white"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -256,15 +264,21 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
                     }}
                     className={`w-full rounded-xl border p-3 text-left transition-colors ${
                       notif.read
-                        ? 'border-[#E5E5E5] bg-white'
-                        : 'border-[#06C167]/40 bg-[#06C167]/5'
+                        ? 'border-[#E5E5E5] bg-white dark:border-[#2E322E] dark:bg-[#1E211E]'
+                        : 'border-[#06C167]/40 bg-[#06C167]/5 dark:bg-[#06C167]/12'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-[#1A1A1A]">{notif.title}</p>
-                      <span className="shrink-0 text-[11px] text-[#6B6B6B]">{notif.timeAgo}</span>
+                      <p className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                        {notif.title}
+                      </p>
+                      <span className="shrink-0 text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
+                        {notif.timeAgo}
+                      </span>
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-[#4C4546]">{notif.message}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[#4C4546] dark:text-[#C8CDC8]">
+                      {notif.message}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -274,17 +288,17 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
 
         {/* Prominent Search Bar */}
         <form onSubmit={handleSearchFormSubmit} className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#6B6B6B] sm:left-4 sm:h-5 sm:w-5" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#6B6B6B] sm:left-4 sm:h-5 sm:w-5 dark:text-[#A3A8A3]" />
           <input
             type="search"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder="Search bakeries, bento, or free food..."
-            className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] pr-22 pl-10 text-sm text-[#1A1A1A] placeholder:text-[#6B6B6B] focus:border-black focus:bg-white focus:outline-none sm:pr-24 sm:pl-11"
+            className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] pr-22 pl-10 text-sm text-[#1A1A1A] placeholder:text-[#6B6B6B] focus:border-black focus:bg-white focus:outline-none sm:pr-24 sm:pl-11 dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:placeholder:text-[#787F78] dark:focus:border-[#06C167] dark:focus:bg-[#1B1E1B]"
           />
           <button
             type="submit"
-            className="absolute top-1/2 right-1.5 min-h-[36px] -translate-y-1/2 rounded-lg bg-black px-3 py-1.5 font-display text-xs font-semibold text-white transition-colors hover:bg-[#1B1B1B] sm:px-3.5 sm:py-2"
+            className="absolute top-1/2 right-1.5 min-h-[36px] -translate-y-1/2 rounded-lg bg-black px-3 py-1.5 font-display text-xs font-semibold text-white transition-colors hover:bg-[#1B1B1B] sm:px-3.5 sm:py-2 dark:bg-[#06C167] dark:text-[#00210D] dark:hover:bg-[#05b05d]"
           >
             Search
           </button>
@@ -330,13 +344,13 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 1. BROWSE CATEGORIES */}
       <section aria-labelledby="sec-categories">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="sec-categories" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+          <h2 id="sec-categories" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
             Browse Categories
           </h2>
           <button
             type="button"
             onClick={() => onSearchSubmit('', 'All')}
-            className="text-xs font-semibold text-[#006D37] hover:underline"
+            className="text-xs font-semibold text-[#006D37] hover:underline dark:text-[#06C167]"
           >
             View all
           </button>
@@ -349,15 +363,15 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => onSearchSubmit('', cat.id)}
-                className="group flex flex-col items-start rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-2.5 text-left transition-all hover:border-black hover:bg-white sm:p-3.5"
+                className="group flex flex-col items-start rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-2.5 text-left transition-all hover:border-black hover:bg-white sm:p-3.5 dark:border-[#2A2D2A] dark:bg-[#161816] dark:hover:border-[#06C167] dark:hover:bg-[#1E211E]"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#1A1A1A] transition-colors group-hover:bg-black group-hover:text-white sm:h-10 sm:w-10">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#1A1A1A] transition-colors group-hover:bg-black group-hover:text-white sm:h-10 sm:w-10 dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:group-hover:bg-[#06C167] dark:group-hover:text-[#00210D]">
                   <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <span className="mt-2 truncate font-display text-xs font-semibold text-[#1A1A1A] sm:mt-2.5 sm:text-sm">
+                <span className="mt-2 truncate font-display text-xs font-semibold text-[#1A1A1A] sm:mt-2.5 sm:text-sm dark:text-[#F5F5F5]">
                   {cat.label}
                 </span>
-                <span className="line-clamp-1 text-[10px] text-[#6B6B6B] sm:text-[11px]">
+                <span className="line-clamp-1 text-[10px] text-[#6B6B6B] sm:text-[11px] dark:text-[#A3A8A3]">
                   {cat.countLabel}
                 </span>
               </button>
@@ -419,15 +433,15 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 3. FREE FOOD, ZERO COST */}
       <section
         aria-labelledby="sec-free-food"
-        className="rounded-2xl border border-[#06C167]/40 bg-[#06C167]/[0.06] p-4 sm:p-6"
+        className="rounded-2xl border border-[#06C167]/40 bg-[#06C167]/[0.06] p-4 sm:p-6 dark:border-[#06C167]/30 dark:bg-[#06C167]/[0.08]"
       >
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#006D37]">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#006D37] dark:text-[#06C167]">
               <HeartHandshake className="h-4 w-4" />
               <span>Community Zero-Cost Rescue</span>
             </div>
-            <h2 id="sec-free-food" className="mt-0.5 font-display text-lg font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-free-food" className="mt-0.5 font-display text-lg font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Free Food, Zero Cost
             </h2>
           </div>
@@ -456,18 +470,18 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-90-off">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#006D37]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#006D37] dark:text-[#06C167]">
               <Tag className="h-3.5 w-3.5" />
               <span>Highest Discount Bags</span>
             </div>
-            <h2 id="sec-90-off" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-90-off" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Up to 90% Off
             </h2>
           </div>
           <button
             type="button"
             onClick={() => onSearchSubmit('', 'All')}
-            className="text-xs font-semibold text-[#1A1A1A] hover:underline"
+            className="text-xs font-semibold text-[#1A1A1A] hover:underline dark:text-[#F5F5F5]"
           >
             See all
           </button>
@@ -493,15 +507,15 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-almost-gone">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#9A5B00]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#9A5B00] dark:text-[#FFB020]">
               <Flame className="h-3.5 w-3.5" />
               <span>Low Stock Alert</span>
             </div>
-            <h2 id="sec-almost-gone" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-almost-gone" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Almost Gone
             </h2>
           </div>
-          <span className="text-xs font-medium text-[#6B6B6B] tabular-nums">
+          <span className="text-xs font-medium text-[#6B6B6B] tabular-nums dark:text-[#A3A8A3]">
             3 bags or fewer
           </span>
         </div>
@@ -526,10 +540,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-near-you">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="sec-near-you" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-near-you" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Rescue Food Near You
             </h2>
-            <p className="text-xs text-[#6B6B6B]">
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
               Closest pickups to {selectedLocation.label}
             </p>
           </div>
@@ -552,11 +566,11 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-ending-soon">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#E11900]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#E11900] dark:text-[#FF6B57]">
               <Clock className="h-3.5 w-3.5" />
               <span>Expiring Pickup Windows</span>
             </div>
-            <h2 id="sec-ending-soon" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-ending-soon" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Ending Soon
             </h2>
           </div>
@@ -583,10 +597,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-best-deals">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="sec-best-deals" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-best-deals" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Best Deals Today
             </h2>
-            <p className="text-xs text-[#6B6B6B]">Top price-to-value surplus picks</p>
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Top price-to-value surplus picks</p>
           </div>
         </div>
 
@@ -619,10 +633,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-popular">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="sec-popular" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-popular" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Popular Near You
             </h2>
-            <p className="text-xs text-[#6B6B6B]">Most frequently rescued local kitchens</p>
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Most frequently rescued local kitchens</p>
           </div>
         </div>
 
@@ -632,8 +646,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
         >
           {popularNearYou.map((item) => (
             <div key={item.id} className="w-[252px] shrink-0 snap-start sm:w-[280px]">
-              <div className="mb-1.5 flex items-center justify-between px-0.5 text-xs text-[#6B6B6B]">
-                <span className="truncate font-semibold text-[#1A1A1A]">{item.merchantName}</span>
+              <div className="mb-1.5 flex items-center justify-between px-0.5 text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
+                <span className="truncate font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+                  {item.merchantName}
+                </span>
                 <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
                   <Star className="h-3 w-3 fill-[#06C167] text-[#06C167]" />
                   {item.rescuedCount.toLocaleString()} rescued
@@ -653,13 +669,13 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 10. BAKERY RESCUE */}
       <section aria-labelledby="sec-bakery">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="sec-bakery" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+          <h2 id="sec-bakery" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
             Bakery Rescue
           </h2>
           <button
             type="button"
             onClick={() => onSearchSubmit('', 'Bakery')}
-            className="text-xs font-semibold text-[#006D37] hover:underline"
+            className="text-xs font-semibold text-[#006D37] hover:underline dark:text-[#06C167]"
           >
             All Bakery
           </button>
@@ -683,13 +699,13 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 11. MEAL DEALS */}
       <section aria-labelledby="sec-meals">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="sec-meals" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+          <h2 id="sec-meals" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
             Meal Deals
           </h2>
           <button
             type="button"
             onClick={() => onSearchSubmit('', 'Meals')}
-            className="text-xs font-semibold text-[#006D37] hover:underline"
+            className="text-xs font-semibold text-[#006D37] hover:underline dark:text-[#06C167]"
           >
             All Meals
           </button>
@@ -713,13 +729,13 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 12. SWEET TREATS */}
       <section aria-labelledby="sec-sweets">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="sec-sweets" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+          <h2 id="sec-sweets" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
             Sweet Treats
           </h2>
           <button
             type="button"
             onClick={() => onSearchSubmit('', 'Desserts')}
-            className="text-xs font-semibold text-[#006D37] hover:underline"
+            className="text-xs font-semibold text-[#006D37] hover:underline dark:text-[#06C167]"
           >
             All Desserts
           </button>
@@ -744,10 +760,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-new">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="sec-new" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-new" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               New on the Platform
             </h2>
-            <p className="text-xs text-[#6B6B6B]">Freshly joined local restaurants &amp; cafes</p>
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Freshly joined local restaurants &amp; cafes</p>
           </div>
         </div>
         <HorizontalCarousel
@@ -769,15 +785,15 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 14. WEEKEND SPECIALS */}
       <section
         aria-labelledby="sec-weekend"
-        className="rounded-2xl border border-[#E5E5E5] bg-[#F6F6F6] p-4 sm:p-6"
+        className="rounded-2xl border border-[#E5E5E5] bg-[#F6F6F6] p-4 sm:p-6 dark:border-[#2A2D2A] dark:bg-[#161816]"
       >
         <div className="mb-3.5 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1A1A1A]">
-              <Gift className="h-3.5 w-3.5 text-[#006D37]" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+              <Gift className="h-3.5 w-3.5 text-[#006D37] dark:text-[#06C167]" />
               <span>Saturday &amp; Sunday Pickup Bundles</span>
             </div>
-            <h2 id="sec-weekend" className="mt-0.5 font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-weekend" className="mt-0.5 font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Weekend Specials
             </h2>
           </div>
@@ -802,10 +818,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       <section aria-labelledby="sec-recommended">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 id="sec-recommended" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+            <h2 id="sec-recommended" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
               Recommended for You
             </h2>
-            <p className="text-xs text-[#6B6B6B]">Picked from your favorite bakeries &amp; bowls</p>
+            <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">Picked from your favorite bakeries &amp; bowls</p>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
@@ -824,10 +840,10 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
       {/* 16. RECENTLY VIEWED */}
       <section aria-labelledby="sec-recent">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="sec-recent" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl">
+          <h2 id="sec-recent" className="font-display text-base font-bold text-[#1A1A1A] sm:text-xl dark:text-[#F5F5F5]">
             Recently Viewed
           </h2>
-          <span className="text-xs text-[#6B6B6B] tabular-nums">
+          <span className="text-xs text-[#6B6B6B] tabular-nums dark:text-[#A3A8A3]">
             {recentlyViewed.length} item{recentlyViewed.length === 1 ? '' : 's'}
           </span>
         </div>
@@ -844,7 +860,7 @@ export const ConsumerHome: React.FC<ConsumerHomeProps> = ({
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-[#E5E5E5] p-6 text-center text-sm text-[#6B6B6B]">
+          <div className="rounded-xl border border-dashed border-[#E5E5E5] p-6 text-center text-sm text-[#6B6B6B] dark:border-[#2A2D2A] dark:text-[#A3A8A3]">
             Open any surprise bag above and it will appear here for quick access.
           </div>
         )}

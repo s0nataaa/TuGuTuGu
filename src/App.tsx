@@ -43,7 +43,6 @@ const DEFAULT_PROFILE: CustomerProfileData = {
   email: 'nadia.pratama@tugutugu.id',
   phone: '+62 812-8842-4890',
 };
-const BRAND_LOGO = '/assets/aistudio/TuguTugu_Logo_fab5865f.jpg';
 
 export default function App() {
   const [listings, setListings] = useState<FoodListing[]>(INITIAL_LISTINGS);
@@ -147,6 +146,26 @@ export default function App() {
   // Detail & Checkout Overlays
   const [detailListing, setDetailListing] = useState<FoodListing | null>(null);
   const [checkoutListing, setCheckoutListing] = useState<FoodListing | null>(null);
+
+  // Theme State (light | dark)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('tugutugu_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch {
+      // ignore
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    try {
+      localStorage.setItem('tugutugu_theme', theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
 
   // Consumer Auth Flow
   const [isConsumerAuthenticated, setIsConsumerAuthenticated] = useState<boolean>(() => {
@@ -363,7 +382,7 @@ export default function App() {
   // Render Merchant Mode (only accessible after logging in as user)
   if (appMode === 'merchant') {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-[#FCF9F8]">
+      <div className="min-h-screen overflow-x-hidden bg-[#FCF9F8] dark:bg-[#0D0E0D]">
         <MerchantPortal
           mode={merchantViewMode}
           merchant={merchantAccount}
@@ -403,21 +422,16 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-10">
+    <div className="min-h-screen overflow-x-hidden bg-white pb-[calc(4.5rem+env(safe-area-inset-bottom))] dark:bg-[#0D0E0D] dark:text-[#F3F4F6] md:pb-10">
       {/* Mobile Compact Brand Strip (non-sticky so sticky height stays strictly under mobile cap) */}
-      <div className="flex items-center justify-between border-b border-[#E5E5E5] bg-white px-4 py-2.5 md:hidden">
+      <div className="flex items-center justify-between border-b border-[#E5E5E5] bg-white px-4 py-2.5 dark:border-[#262926] dark:bg-[#141614] md:hidden">
         <button
           type="button"
           onClick={() => setActiveTab('home')}
-          className="flex items-center gap-2 text-left"
+          className="flex items-center text-left"
         >
-          <img
-            src={BRAND_LOGO}
-            alt="TuGuTuGu logo"
-            className="h-8 w-8 rounded-lg object-cover border border-[#E5E5E5]"
-          />
-          <span className="font-display text-base font-bold tracking-tight text-black">
-            TuGu<span className="text-[#006D37]">TuGu</span>
+          <span className="font-display text-base font-bold tracking-tight text-black dark:text-white">
+            TuGu<span className="text-[#006D37] dark:text-[#06C167]">TuGu</span>
           </span>
         </button>
 
@@ -425,29 +439,24 @@ export default function App() {
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[#F6F6F6] px-3 py-1 text-xs font-semibold text-[#1A1A1A]"
+            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[#F6F6F6] px-3 py-1 text-xs font-semibold text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#F3F4F6]"
           >
-            <ShoppingBag className="h-3.5 w-3.5 text-[#006D37]" />
+            <ShoppingBag className="h-3.5 w-3.5 text-[#006D37] dark:text-[#06C167]" />
             <span className="tabular-nums">{activeOrdersCount} active</span>
           </button>
         )}
       </div>
 
       {/* Desktop Top Navigation Bar (clean 3-zone contract) */}
-      <header className="sticky top-0 z-30 hidden border-b border-[#E5E5E5] bg-white/95 backdrop-blur-md md:block">
+      <header className="sticky top-0 z-30 hidden border-b border-[#E5E5E5] bg-white/95 backdrop-blur-md dark:border-[#262926] dark:bg-[#141614]/95 md:block">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-6">
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className="flex items-center gap-2.5 font-display text-xl font-bold tracking-tight text-black whitespace-nowrap shrink-0"
+            className="flex items-center font-display text-xl font-bold tracking-tight text-black whitespace-nowrap shrink-0 dark:text-white"
           >
-            <img
-              src={BRAND_LOGO}
-              alt="TuGuTuGu logo"
-              className="h-9 w-9 rounded-lg object-cover border border-[#E5E5E5]"
-            />
             <span>
-              TuGu<span className="text-[#006D37]">TuGu</span>
+              TuGu<span className="text-[#006D37] dark:text-[#06C167]">TuGu</span>
             </span>
           </button>
 
@@ -461,8 +470,8 @@ export default function App() {
                   onClick={() => setActiveTab(item.id)}
                   className={`relative py-1 text-sm font-medium whitespace-nowrap shrink-0 transition-colors ${
                     active
-                      ? 'font-semibold text-black after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-[#06C167]'
-                      : 'text-[#6B6B6B] hover:text-black'
+                      ? 'font-semibold text-black after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-[#06C167] dark:text-white'
+                      : 'text-[#6B6B6B] hover:text-black dark:text-[#A3A8A3] dark:hover:text-white'
                   }`}
                 >
                   {item.label}
@@ -475,7 +484,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-black px-4 font-display text-xs font-semibold text-white whitespace-nowrap shrink-0 hover:bg-[#1B1B1B]"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-black px-4 font-display text-xs font-semibold text-white whitespace-nowrap shrink-0 hover:bg-[#1B1B1B] dark:bg-[#1E211E] dark:border dark:border-[#2E322E] dark:hover:bg-[#272B27]"
           >
             <ShoppingBag className="h-4 w-4 text-[#06C167]" />
             <span>Active Pickups ({activeOrdersCount})</span>
@@ -524,10 +533,12 @@ export default function App() {
         {activeTab === 'orders' && (
           <ConsumerOrders
             orders={orders}
+            listings={listings}
             highlightedOrderId={highlightedOrderId}
             onClearHighlight={() => setHighlightedOrderId(null)}
             onCancelOrder={handleCancelOrder}
             onExploreHome={() => setActiveTab('home')}
+            onSelectListing={handleSelectListing}
           />
         )}
 
@@ -541,6 +552,8 @@ export default function App() {
             onSelectDefaultWallet={setDefaultWallet}
             orders={orders}
             collectedStampsCount={collectedStamps.length}
+            theme={theme}
+            onChangeTheme={setTheme}
             onOpenMerchantLogin={handleOpenMerchantLogin}
             onOpenMerchantRegister={handleOpenMerchantRegister}
             onNavigateOrders={() => setActiveTab('orders')}
@@ -553,7 +566,7 @@ export default function App() {
       {/* Mobile Fixed Bottom Navigation (Home, Search, Explore, Orders, Profile) */}
       <nav
         aria-label="Mobile navigation"
-        className="fixed right-0 bottom-0 left-0 z-40 border-t border-[#E5E5E5] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="fixed right-0 bottom-0 left-0 z-40 border-t border-[#E5E5E5] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md dark:border-[#262926] dark:bg-[#141614]/95 md:hidden"
       >
         <div className="grid h-16 grid-cols-5 items-center">
           {navItems.map((item) => {
@@ -568,7 +581,9 @@ export default function App() {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className={`relative flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 transition-colors ${
-                  active ? 'text-black' : 'text-[#6B6B6B]'
+                  active
+                    ? 'text-black dark:text-white'
+                    : 'text-[#6B6B6B] dark:text-[#9CA39E]'
                 }`}
               >
                 <div className="relative">
@@ -601,6 +616,7 @@ export default function App() {
       {/* Checkout / Free Claim Flow Modal */}
       {checkoutListing && (
         <CheckoutFlow
+          key={checkoutListing.id}
           listing={checkoutListing}
           customerName={customerProfile.name}
           defaultWallet={defaultWallet}

@@ -37,7 +37,6 @@ import {
 import {
   EXPLORE_AREAS,
   EXPLORE_BADGES,
-  EXPLORE_ROUTES,
   INITIAL_LEADERBOARD,
   INITIAL_MISSIONS,
   INITIAL_WISHLIST_ALERTS,
@@ -70,8 +69,292 @@ interface MapCluster {
 const STORAGE_PREFS_KEY = 'tugutugu_dietary_prefs';
 const STORAGE_ALERTS_KEY = 'tugutugu_wishlist_alerts';
 
-// Posisi mock pengguna (Senopati - SCBD)
-const MOCK_USER_POSITION = { x: 49, y: 52 };
+// Posisi mock pengguna (Senopati - SCBD, tepat di simpang jalan utama)
+const MOCK_USER_POSITION = { x: 49, y: 51 };
+
+interface RoadNode {
+  id: string;
+  x: number;
+  y: number;
+}
+
+interface RoadEdge {
+  from: string;
+  to: string;
+  arterial?: boolean;
+}
+
+// Jaringan jalan kota (koordinat 0..100 -> viewBox 400x300 via x*4, y*3)
+const MAP_ROAD_NODES: Record<string, RoadNode> = {
+  // Koridor Barat / Off-canvas extensions
+  n_w1: { id: 'n_w1', x: -20, y: 19 },
+  n_w2: { id: 'n_w2', x: -20, y: 34 },
+  n_w3: { id: 'n_w3', x: -20, y: 54 },
+  n_w4: { id: 'n_w4', x: -20, y: 78 },
+  // Koridor Utara / Off-canvas
+  n_top1: { id: 'n_top1', x: 38, y: -15 },
+  n_top2: { id: 'n_top2', x: 52, y: -15 },
+  n_top3: { id: 'n_top3', x: 67, y: -15 },
+  n_top4: { id: 'n_top4', x: 79, y: -15 },
+  // Koridor Selatan / Off-canvas
+  n_bot1: { id: 'n_bot1', x: 24, y: 115 },
+  n_bot2: { id: 'n_bot2', x: 47, y: 115 },
+  n_bot3: { id: 'n_bot3', x: 55, y: 115 },
+  n_bot4: { id: 'n_bot4', x: 76, y: 115 },
+  // Koridor Timur / Off-canvas
+  n_e1: { id: 'n_e1', x: 120, y: 27 },
+  n_e2: { id: 'n_e2', x: 120, y: 39 },
+  n_e3: { id: 'n_e3', x: 120, y: 46 },
+  n_e4: { id: 'n_e4', x: 120, y: 65 },
+
+  // Persimpangan Utama Menteng (Baris 1)
+  n_m1: { id: 'n_m1', x: 37, y: 22 },
+  n_m2: { id: 'n_m2', x: 52, y: 23 },
+  n_m3: { id: 'n_m3', x: 66, y: 24 },
+  n_m4: { id: 'n_m4', x: 78, y: 25 },
+
+  // Persimpangan Senopati Utara - SCBD Atas (Baris 2)
+  n_s1: { id: 'n_s1', x: 36, y: 35 },
+  n_s2: { id: 'n_s2', x: 50, y: 36 },
+  n_sc1: { id: 'n_sc1', x: 64, y: 36 },
+  n_sc2: { id: 'n_sc2', x: 78, y: 37 },
+
+  // Persimpangan Senopati Utama - User - SCBD (Baris 3)
+  n_g1: { id: 'n_g1', x: 29, y: 52 },
+  n_u1: { id: 'n_u1', x: 44, y: 51 },
+  n_u2: { id: 'n_u2', x: 49, y: 51 },
+  n_sc3: { id: 'n_sc3', x: 63, y: 49 },
+  n_sc4: { id: 'n_sc4', x: 76, y: 48 },
+
+  // Persimpangan Kemang - Bangka (Baris 4)
+  n_k1: { id: 'n_k1', x: 26, y: 75 },
+  n_k2: { id: 'n_k2', x: 48, y: 71 },
+  n_k3: { id: 'n_k3', x: 56, y: 70 },
+  n_k4: { id: 'n_k4', x: 76, y: 68 },
+};
+
+const MAP_ROAD_EDGES: RoadEdge[] = [
+  // Jalan Horizontal 1 (Menteng)
+  { from: 'n_w1', to: 'n_m1', arterial: true },
+  { from: 'n_m1', to: 'n_m2', arterial: true },
+  { from: 'n_m2', to: 'n_m3', arterial: true },
+  { from: 'n_m3', to: 'n_m4', arterial: true },
+  { from: 'n_m4', to: 'n_e1', arterial: true },
+
+  // Jalan Horizontal 2 (Suryo - Senopati Utara - SCBD Lot 14)
+  { from: 'n_w2', to: 'n_s1' },
+  { from: 'n_s1', to: 'n_s2' },
+  { from: 'n_s2', to: 'n_sc1' },
+  { from: 'n_sc1', to: 'n_sc2' },
+  { from: 'n_sc2', to: 'n_e2' },
+
+  // Jalan Horizontal 3 (Arteri Gunawarman - Wolter Monginsidi - SCBD)
+  { from: 'n_w3', to: 'n_g1', arterial: true },
+  { from: 'n_g1', to: 'n_u1', arterial: true },
+  { from: 'n_u1', to: 'n_u2', arterial: true },
+  { from: 'n_u2', to: 'n_sc3', arterial: true },
+  { from: 'n_sc3', to: 'n_sc4', arterial: true },
+  { from: 'n_sc4', to: 'n_e3', arterial: true },
+
+  // Jalan Horizontal 4 (Kemang Raya - Bangka)
+  { from: 'n_w4', to: 'n_k1', arterial: true },
+  { from: 'n_k1', to: 'n_k2', arterial: true },
+  { from: 'n_k2', to: 'n_k3', arterial: true },
+  { from: 'n_k3', to: 'n_k4', arterial: true },
+  { from: 'n_k4', to: 'n_e4', arterial: true },
+
+  // Jalan Vertikal 1 (Gunawarman - Kemang Raya)
+  { from: 'n_top1', to: 'n_m1', arterial: true },
+  { from: 'n_m1', to: 'n_s1', arterial: true },
+  { from: 'n_s1', to: 'n_g1', arterial: true },
+  { from: 'n_g1', to: 'n_k1', arterial: true },
+  { from: 'n_k1', to: 'n_bot1', arterial: true },
+
+  // Jalan Vertikal 2 (Senopati Tengah - Bangka Barat)
+  { from: 'n_top2', to: 'n_m2', arterial: true },
+  { from: 'n_m2', to: 'n_s2', arterial: true },
+  { from: 'n_s2', to: 'n_u2', arterial: true },
+  { from: 'n_u2', to: 'n_k2', arterial: true },
+  { from: 'n_k2', to: 'n_bot2', arterial: true },
+
+  // Jalan Vertikal 3 (Sudirman - SCBD - Bangka Timur)
+  { from: 'n_top3', to: 'n_m3' },
+  { from: 'n_m3', to: 'n_sc1' },
+  { from: 'n_sc1', to: 'n_sc3' },
+  { from: 'n_sc3', to: 'n_k3' },
+  { from: 'n_k3', to: 'n_bot3' },
+
+  // Jalan Vertikal 4 (SCBD Timur - Pacific Place)
+  { from: 'n_top4', to: 'n_m4', arterial: true },
+  { from: 'n_m4', to: 'n_sc2', arterial: true },
+  { from: 'n_sc2', to: 'n_sc4', arterial: true },
+  { from: 'n_sc4', to: 'n_k4', arterial: true },
+  { from: 'n_k4', to: 'n_bot4', arterial: true },
+];
+
+// Blok bangunan berada di dalam petak antar-jalan agar garis rute tidak pernah menembus gedung
+const MAP_BUILDING_BLOCKS: { x: number; y: number; w: number; h: number }[] = [
+  // Blok Utara (antara Menteng & Senopati Utara)
+  { x: 40, y: 26, w: 8, h: 6 },
+  { x: 55, y: 26.5, w: 7, h: 6.5 },
+  { x: 69, y: 27.5, w: 6, h: 6.5 },
+  // Blok Tengah Atas (antara Senopati Utara & Arteri Utama)
+  { x: 16, y: 39, w: 12, h: 9 },
+  { x: 35, y: 39, w: 9, h: 8.5 },
+  { x: 53, y: 39.5, w: 7, h: 7 },
+  { x: 67, y: 39.5, w: 6.5, h: 6 },
+  // Blok Tengah Bawah (antara Arteri Utama & Kemang)
+  { x: 14, y: 57.5, w: 10, h: 12 },
+  { x: 32, y: 55.5, w: 12, h: 11 },
+  { x: 53, y: 54, w: 6, h: 10.5 },
+  { x: 65, y: 53, w: 8, h: 11.5 },
+  // Blok Selatan (bawah Kemang Raya)
+  { x: 31, y: 76.5, w: 12, h: 8 },
+  { x: 60, y: 74, w: 11, h: 8 },
+];
+
+function projectPointToSegment(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): { x: number; y: number; dist: number } {
+  const vx = b.x - a.x;
+  const vy = b.y - a.y;
+  const lenSq = vx * vx + vy * vy;
+  if (lenSq === 0) {
+    return { x: a.x, y: a.y, dist: Math.hypot(p.x - a.x, p.y - a.y) };
+  }
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / lenSq));
+  const projX = a.x + t * vx;
+  const projY = a.y + t * vy;
+  return { x: projX, y: projY, dist: Math.hypot(p.x - projX, p.y - projY) };
+}
+
+function findNearestRoadEdge(pt: { x: number; y: number }): {
+  edge: RoadEdge;
+  proj: { x: number; y: number };
+} {
+  let bestEdge = MAP_ROAD_EDGES[0];
+  let bestProj = { x: pt.x, y: pt.y };
+  let bestDist = Infinity;
+
+  for (const edge of MAP_ROAD_EDGES) {
+    const a = MAP_ROAD_NODES[edge.from];
+    const b = MAP_ROAD_NODES[edge.to];
+    const res = projectPointToSegment(pt, a, b);
+    if (res.dist < bestDist) {
+      bestDist = res.dist;
+      bestEdge = edge;
+      bestProj = { x: res.x, y: res.y };
+    }
+  }
+  return { edge: bestEdge, proj: bestProj };
+}
+
+function computeRoadRoute(
+  startPt: { x: number; y: number },
+  endPt: { x: number; y: number }
+): {
+  points: { x: number; y: number }[];
+  roadUnits: number;
+} {
+  const startSnap = findNearestRoadEdge(startPt);
+  const endSnap = findNearestRoadEdge(endPt);
+
+  // Bangun graf adjacency sementara dengan titik snap user & toko
+  const nodes: Record<string, { x: number; y: number }> = {};
+  for (const [id, n] of Object.entries(MAP_ROAD_NODES)) {
+    nodes[id] = { x: n.x, y: n.y };
+  }
+  const adj: Record<string, { to: string; w: number }[]> = {};
+  for (const id of Object.keys(nodes)) {
+    adj[id] = [];
+  }
+
+  const addLink = (u: string, v: string) => {
+    const w = Math.hypot(nodes[u].x - nodes[v].x, nodes[u].y - nodes[v].y);
+    adj[u].push({ to: v, w });
+    adj[v].push({ to: u, w });
+  };
+
+  for (const edge of MAP_ROAD_EDGES) {
+    addLink(edge.from, edge.to);
+  }
+
+  nodes.__start = startSnap.proj;
+  adj.__start = [];
+  addLink('__start', startSnap.edge.from);
+  addLink('__start', startSnap.edge.to);
+
+  nodes.__end = endSnap.proj;
+  adj.__end = [];
+  addLink('__end', endSnap.edge.from);
+  addLink('__end', endSnap.edge.to);
+
+  // Jika start dan end menempel di segmen jalan yang sama, hubungkan langsung sepanjang jalan tersebut
+  const sameEdge =
+    (startSnap.edge.from === endSnap.edge.from && startSnap.edge.to === endSnap.edge.to) ||
+    (startSnap.edge.from === endSnap.edge.to && startSnap.edge.to === endSnap.edge.from);
+  if (sameEdge) {
+    addLink('__start', '__end');
+  }
+
+  // Dijkstra
+  const dist: Record<string, number> = {};
+  const prev: Record<string, string | null> = {};
+  const visited = new Set<string>();
+  for (const id of Object.keys(nodes)) {
+    dist[id] = Infinity;
+    prev[id] = null;
+  }
+  dist.__start = 0;
+
+  while (true) {
+    let curr: string | null = null;
+    let currDist = Infinity;
+    for (const id of Object.keys(nodes)) {
+      if (!visited.has(id) && dist[id] < currDist) {
+        currDist = dist[id];
+        curr = id;
+      }
+    }
+    if (!curr || curr === '__end' || currDist === Infinity) break;
+    visited.add(curr);
+    for (const next of adj[curr]) {
+      const alt = currDist + next.w;
+      if (alt < dist[next.to]) {
+        dist[next.to] = alt;
+        prev[next.to] = curr;
+      }
+    }
+  }
+
+  const pathIds: string[] = [];
+  let trace: string | null = '__end';
+  while (trace) {
+    pathIds.unshift(trace);
+    trace = prev[trace];
+  }
+
+  const roadWaypoints = pathIds.map((id) => nodes[id]);
+  const fullPoints: { x: number; y: number }[] = [startPt, ...roadWaypoints, endPt];
+
+  // Hapus titik duplikat berurutan yang terlalu dekat
+  const compact: { x: number; y: number }[] = [];
+  for (const pt of fullPoints) {
+    const last = compact[compact.length - 1];
+    if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 0.35) {
+      compact.push(pt);
+    }
+  }
+
+  let totalUnits = 0;
+  for (let i = 1; i < compact.length; i++) {
+    totalUnits += Math.hypot(compact[i].x - compact[i - 1].x, compact[i].y - compact[i - 1].y);
+  }
+
+  return { points: compact, roadUnits: totalUnits };
+}
 
 // Center & zoom preset per area saat chip area dipilih
 const AREA_CAMERA_PRESETS: Record<string, { x: number; y: number; zoom: number }> = {
@@ -107,6 +390,10 @@ function estimateWalkMinutes(distanceKm: number): number {
   return Math.max(2, Math.round(distanceKm * 12.5));
 }
 
+function isFreeListing(item: FoodListing): boolean {
+  return item.discountedPrice <= 0 || item.discountPercent >= 100;
+}
+
 export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
   listings,
   orders,
@@ -117,7 +404,6 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 }) => {
   const [mode, setMode] = useState<ExploreMode>('area');
   const [selectedAreaId, setSelectedAreaId] = useState<string>('all');
-  const [selectedRouteId, setSelectedRouteId] = useState<string>(EXPLORE_ROUTES[0].id);
   const [onlyUnstamped, setOnlyUnstamped] = useState<boolean>(false);
   const [onlyUrgent, setOnlyUrgent] = useState<boolean>(false);
 
@@ -142,9 +428,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     moved: boolean;
   } | null>(null);
 
-  // Seleksi Pin & Kartu Ringkas (Sinkron Dua Arah)
-  const [focusedMerchantId, setFocusedMerchantId] = useState<string>(
-    listings[0]?.merchantId ?? 'm-boulangerie'
+  // Seleksi Listing Eksak & Kartu Ringkas (Sinkron Dua Arah berdasarkan listing.id, bukan merchantId saja)
+  const [focusedListingId, setFocusedListingId] = useState<string>(
+    listings[0]?.id ?? 'bag-01'
   );
   const [showPinCard, setShowPinCard] = useState<boolean>(false);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -211,11 +497,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     }, 2600);
   };
 
-  const activeRoute =
-    EXPLORE_ROUTES.find((r) => r.id === selectedRouteId) ?? EXPLORE_ROUTES[0];
   const activeArea = EXPLORE_AREAS.find((a) => a.id === selectedAreaId) ?? EXPLORE_AREAS[0];
 
-  // Filter dasar sesuai mode aktif & preferensi Explore (tanpa membatasi viewport agar pin tetap muncul saat peta digeser)
+  // Filter dasar sesuai preferensi Explore (di mode Area & Rute semua Toko tetap terlihat agar bisa dipilih sebagai tujuan)
   const filteredListings = useMemo(() => {
     return listings.filter((item) => {
       if (item.stock <= 0) return false;
@@ -225,10 +509,6 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       if (onlyUnstamped && collectedStamps.includes(item.merchantId)) return false;
       if (onlyUrgent && !isUrgentListing(item, nowMs)) return false;
 
-      if (mode === 'route') {
-        if (!activeRoute.merchantIdsOnRoute.includes(item.merchantId)) return false;
-      }
-
       return true;
     });
   }, [
@@ -237,8 +517,6 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     onlyUnstamped,
     onlyUrgent,
     collectedStamps,
-    mode,
-    activeRoute,
     nowMs,
   ]);
 
@@ -253,7 +531,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     );
   }, [filteredListings, mapCenter, zoom]);
 
-  // Pin merchant unik di peta (mengutamakan penawaran segera habis / harga termurah per merchant)
+  // Pin merchant unik di peta (mengutamakan penawaran gratis / harga termurah / segera habis per merchant)
   const mapPins = useMemo(() => {
     const byMerchant = new Map<string, FoodListing>();
     for (const item of filteredListings) {
@@ -261,11 +539,16 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       if (!existing) {
         byMerchant.set(item.merchantId, item);
       } else {
+        const itemFree = isFreeListing(item);
+        const existingFree = isFreeListing(existing);
         const itemUrgent = isUrgentListing(item, nowMs);
         const existingUrgent = isUrgentListing(existing, nowMs);
         if (
-          (itemUrgent && !existingUrgent) ||
-          (itemUrgent === existingUrgent && item.discountedPrice < existing.discountedPrice)
+          (itemFree && !existingFree) ||
+          (itemFree === existingFree && itemUrgent && !existingUrgent) ||
+          (itemFree === existingFree &&
+            itemUrgent === existingUrgent &&
+            item.discountedPrice < existing.discountedPrice)
         ) {
           byMerchant.set(item.merchantId, item);
         }
@@ -301,7 +584,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
         minPrice: pin.discountedPrice,
         hasUrgent: isUrgentListing(pin, nowMs),
         hasUnstamped: !collectedStamps.includes(pin.merchantId),
-        hasFree: pin.discountedPrice === 0,
+        hasFree: isFreeListing(pin),
       }));
     }
 
@@ -324,7 +607,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
         target.minPrice = Math.min(target.minPrice, pin.discountedPrice);
         target.hasUrgent = target.hasUrgent || isUrgentListing(pin, nowMs);
         target.hasUnstamped = target.hasUnstamped || !collectedStamps.includes(pin.merchantId);
-        target.hasFree = target.hasFree || pin.discountedPrice === 0;
+        target.hasFree = target.hasFree || isFreeListing(pin);
       } else {
         clusters.push({
           id: `cluster-${pin.merchantId}`,
@@ -334,7 +617,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
           minPrice: pin.discountedPrice,
           hasUrgent: isUrgentListing(pin, nowMs),
           hasUnstamped: !collectedStamps.includes(pin.merchantId),
-          hasFree: pin.discountedPrice === 0,
+          hasFree: isFreeListing(pin),
         });
       }
     }
@@ -342,15 +625,39 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     return clusters;
   }, [isClusteringActive, mapPins, zoom, nowMs, collectedStamps]);
 
-  // Listing yang sedang disorot oleh tap pin atau tap kartu bottom sheet
+  // Listing eksak yang sedang disorot oleh tap pin atau tap kartu bottom sheet
   const focusedListing = useMemo(() => {
     return (
-      filteredListings.find((l) => l.merchantId === focusedMerchantId) ??
+      filteredListings.find((l) => l.id === focusedListingId) ??
       viewportListings[0] ??
       filteredListings[0] ??
       null
     );
-  }, [filteredListings, viewportListings, focusedMerchantId]);
+  }, [filteredListings, viewportListings, focusedListingId]);
+
+  // Semua bag aktif milik merchant yang sedang disorot (agar mudah ganti antara bag gratis & diskon)
+  const focusedMerchantBags = useMemo(() => {
+    if (!focusedListing) return [];
+    return filteredListings.filter((l) => l.merchantId === focusedListing.merchantId);
+  }, [filteredListings, focusedListing]);
+
+  // Rute jalan kaki/berkendara dari posisi USER ke toko yang dipilih
+  const activeUserRoute = useMemo(() => {
+    const target = focusedListing ?? mapPins[0] ?? null;
+    if (!target) return null;
+    const route = computeRoadRoute(MOCK_USER_POSITION, target.coordinates);
+    const roadKm = Math.max(0.2, Number((route.roadUnits * 0.036).toFixed(1)));
+    const walkMin = Math.max(2, Math.round(roadKm * 12.5));
+    const rideMin = Math.max(1, Math.round(roadKm * 3.5));
+    return {
+      target,
+      points: route.points,
+      polylineString: route.points.map((pt) => `${pt.x * 4},${pt.y * 3}`).join(' '),
+      roadKm,
+      walkMin,
+      rideMin,
+    };
+  }, [focusedListing, mapPins]);
 
   // Impact Tracker metrics
   const impactStats = useMemo(() => {
@@ -386,37 +693,56 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     setZoom(preset.zoom);
   };
 
-  // Pilih Rute -> pusatkan kamera ke koridor rute
-  const handleSelectRoute = (routeId: string) => {
-    setSelectedRouteId(routeId);
-    const route = EXPLORE_ROUTES.find((r) => r.id === routeId);
-    if (route) {
-      setMapCenter({
-        x: (route.originPoint.x + route.destinationPoint.x) / 2,
-        y: (route.originPoint.y + route.destinationPoint.y) / 2,
-      });
-      setZoom(1.15);
-    }
-  };
+  // Mulai / pusatkan Rute dari posisi USER ke Toko tertentu
+  const handleRouteToListing = (target: FoodListing, openCard = true) => {
+    setMode('route');
+    setFocusedListingId(target.id);
+    if (openCard) setShowPinCard(true);
 
-  // Sinkron Pin -> Bottom Sheet
-  const handleTapMapPin = (pin: FoodListing) => {
-    setFocusedMerchantId(pin.merchantId);
-    setShowPinCard(true);
+    const spanX = Math.max(18, Math.abs(target.coordinates.x - MOCK_USER_POSITION.x) + 18);
+    const spanY = Math.max(18, Math.abs(target.coordinates.y - MOCK_USER_POSITION.y) + 22);
+    const nextZoom = clamp(Number(Math.min(64 / spanX, 58 / spanY).toFixed(2)), 0.95, 1.45);
+    setMapCenter({
+      x: (MOCK_USER_POSITION.x + target.coordinates.x) / 2,
+      y: (MOCK_USER_POSITION.y + target.coordinates.y) / 2 + (openCard ? 4 : 0),
+    });
+    setZoom(nextZoom);
 
-    // Scroll kartu merchant terkait di bottom sheet agar sinkron dua arah
     window.setTimeout(() => {
-      cardRefs.current[pin.merchantId]?.scrollIntoView({
+      cardRefs.current[target.id]?.scrollIntoView({
         behavior: 'smooth',
         block: 'nearest',
       });
     }, 60);
   };
 
-  // Sinkron Bottom Sheet Card -> Sorot Pin di Peta
-  const handleFocusFromSheetCard = (item: FoodListing) => {
-    setFocusedMerchantId(item.merchantId);
+  // Sinkron Pin -> Bottom Sheet (pakai pin.id persis agar bag gratis tidak tertukar bag diskon)
+  const handleTapMapPin = (pin: FoodListing) => {
+    setFocusedListingId(pin.id);
     setShowPinCard(true);
+
+    if (mode === 'route') {
+      handleRouteToListing(pin, true);
+      return;
+    }
+
+    window.setTimeout(() => {
+      cardRefs.current[pin.id]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }, 60);
+  };
+
+  // Sinkron Bottom Sheet Card -> Sorot Pin di Peta (atau update rute jika sedang di mode Rute)
+  const handleFocusFromSheetCard = (item: FoodListing) => {
+    setFocusedListingId(item.id);
+    setShowPinCard(true);
+
+    if (mode === 'route') {
+      handleRouteToListing(item, true);
+      return;
+    }
 
     const screen = toScreenPos(item.coordinates);
     const outOfFocusBand =
@@ -537,8 +863,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
   const handleActivateRouteAlert = () => {
     const title =
-      mode === 'route'
-        ? `Alert Rute: ${activeRoute.originName} → ${activeRoute.destinationName}`
+      mode === 'route' && activeUserRoute
+        ? `Alert Rute: Lokasimu → ${activeUserRoute.target.merchantName}`
         : `Alert Area: ${activeArea.name}`;
     setAlerts((prev) => [
       {
@@ -586,10 +912,10 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
     setSplitListing(null);
   };
 
-  const polylinePoints = activeRoute.polyline.map((pt) => `${pt.x * 4},${pt.y * 3}`).join(' ');
   const userScreenPos = toScreenPos(MOCK_USER_POSITION);
-  const routeOriginScreen = toScreenPos(activeRoute.originPoint);
-  const routeDestScreen = toScreenPos(activeRoute.destinationPoint);
+  const routeDestScreen = activeUserRoute
+    ? toScreenPos(activeUserRoute.target.coordinates)
+    : null;
 
   // Tinggi daftar pada bottom sheet sesuai posisi drag snap
   const listMaxHeightClass =
@@ -606,12 +932,13 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
   const focusedStamped = focusedListing
     ? collectedStamps.includes(focusedListing.merchantId)
     : false;
+  const focusedIsFree = focusedListing ? isFreeListing(focusedListing) : false;
 
   return (
     <div className="space-y-3 pt-2 pb-8 sm:space-y-4">
       {/* Feedback Toast */}
       {feedbackToast && (
-        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white shadow-lg">
+        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white shadow-lg dark:border dark:border-[#2E322E] dark:bg-[#1E211E]">
           {feedbackToast}
         </div>
       )}
@@ -619,11 +946,11 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       {/* EXPLORE TOP BAR */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#006D37]">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#006D37] dark:text-[#06C167]">
             <Compass className="h-3.5 w-3.5" />
             <span>Peta Jelajah Toko</span>
           </div>
-          <h1 className="font-display text-xl font-bold text-[#1A1A1A] sm:text-2xl">
+          <h1 className="font-display text-xl font-bold text-[#1A1A1A] sm:text-2xl dark:text-[#F5F5F5]">
             Explore TuGuTuGu
           </h1>
         </div>
@@ -633,9 +960,10 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
           <button
             type="button"
             onClick={() => setShowPokestopHub(true)}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-black px-3 text-xs font-bold text-white hover:bg-[#1B1B1B]"
+            aria-label="Koleksi Stempel Toko"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
           >
-            <Stamp className="h-3.5 w-3.5 text-[#06C167]" />
+            <Stamp className="h-3.5 w-3.5 text-[#006D37] dark:text-[#06C167]" />
             <span className="tabular-nums">
               {collectedStamps.length}/{allMerchantSpots.length}
             </span>
@@ -644,9 +972,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
           <button
             type="button"
             onClick={() => setShowImpactModal(true)}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7]"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] px-3 text-xs font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
           >
-            <Sparkles className="h-3.5 w-3.5 text-[#006D37]" />
+            <Sparkles className="h-3.5 w-3.5 text-[#006D37] dark:text-[#06C167]" />
             <span className="tabular-nums">{impactStats.foodKg} kg</span>
           </button>
 
@@ -654,7 +982,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             type="button"
             onClick={() => setShowAlertsModal(true)}
             aria-label="Notifikasi dan Wishlist Alert"
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7]"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
           >
             <Bell className="h-4 w-4" />
             {alerts.some((a) => a.active) && (
@@ -665,7 +993,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       </div>
 
       {/* EXPLORE MODE SWITCHER: Area | Rute */}
-      <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-1">
+      <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-1 dark:border-[#2A2D2A] dark:bg-[#161816]">
         <button
           type="button"
           onClick={() => {
@@ -675,7 +1003,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             setZoom(preset.zoom);
           }}
           className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold whitespace-nowrap transition-colors ${
-            mode === 'area' ? 'bg-black text-white' : 'text-[#6B6B6B] hover:text-[#1A1A1A]'
+            mode === 'area'
+              ? 'bg-black text-white dark:bg-white dark:text-[#0D0E0D]'
+              : 'text-[#6B6B6B] hover:text-[#1A1A1A] dark:text-[#A3A8A3] dark:hover:text-[#F5F5F5]'
           }`}
         >
           <Layers className="h-3.5 w-3.5 shrink-0" />
@@ -684,11 +1014,17 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
         <button
           type="button"
           onClick={() => {
-            setMode('route');
-            handleSelectRoute(selectedRouteId);
+            const target = focusedListing ?? mapPins[0];
+            if (target) {
+              handleRouteToListing(target, false);
+            } else {
+              setMode('route');
+            }
           }}
           className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold whitespace-nowrap transition-colors ${
-            mode === 'route' ? 'bg-black text-white' : 'text-[#6B6B6B] hover:text-[#1A1A1A]'
+            mode === 'route'
+              ? 'bg-black text-white dark:bg-white dark:text-[#0D0E0D]'
+              : 'text-[#6B6B6B] hover:text-[#1A1A1A] dark:text-[#A3A8A3] dark:hover:text-[#F5F5F5]'
           }`}
         >
           <Route className="h-3.5 w-3.5 shrink-0" />
@@ -708,8 +1044,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                 onClick={() => handleSelectArea(area.id)}
                 className={`min-h-[38px] shrink-0 rounded-xl border px-3.5 py-1.5 text-left transition-colors ${
                   active
-                    ? 'border-black bg-black text-white'
-                    : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6]'
+                    ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-[#0D0E0D]'
+                    : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]'
                 }`}
               >
                 <p className="text-xs font-bold whitespace-nowrap">{area.name}</p>
@@ -719,46 +1055,54 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
         </div>
       )}
 
-      {mode === 'route' && (
-        <div className="space-y-2 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#1A1A1A]">Pilih Rute Komuter</span>
-            <span className="text-[11px] font-semibold text-[#006D37] tabular-nums">
-              ~{activeRoute.durationMin} mnt perjalanan
+      {mode === 'route' && activeUserRoute && (
+        <div className="space-y-2 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3 dark:border-[#2A2D2A] dark:bg-[#161816]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
+              Rute Jalan dari Lokasimu ke Toko
+            </span>
+            <span className="text-[11px] font-semibold text-[#006D37] tabular-nums dark:text-[#06C167]">
+              {activeUserRoute.roadKm.toFixed(1)} km · ~{activeUserRoute.walkMin} mnt jalan · ~
+              {activeUserRoute.rideMin} mnt motor
             </span>
           </div>
           <div className="no-scrollbar flex gap-2 overflow-x-auto pb-0.5">
-            {EXPLORE_ROUTES.map((route) => {
-              const active = route.id === activeRoute.id;
+            {mapPins.map((pin) => {
+              const active = pin.merchantId === activeUserRoute.target.merchantId;
               return (
                 <button
-                  key={route.id}
+                  key={pin.id}
                   type="button"
-                  onClick={() => handleSelectRoute(route.id)}
+                  onClick={() => handleRouteToListing(pin, true)}
                   className={`min-h-[38px] shrink-0 rounded-lg border px-3 text-xs font-semibold whitespace-nowrap transition-colors ${
                     active
-                      ? 'border-black bg-black text-white'
-                      : 'border-[#E5E5E5] bg-white text-[#1A1A1A]'
+                      ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-[#0D0E0D]'
+                      : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]'
                   }`}
                 >
-                  {route.label}
+                  {pin.merchantName}
                 </button>
               );
             })}
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-[#4C4546]">
-            <span className="font-semibold text-[#1A1A1A]">Asal:</span>
-            <span className="truncate">{activeRoute.originName}</span>
+          <div className="flex items-center gap-2 text-[11px] text-[#4C4546] dark:text-[#C8CDC8]">
+            <span className="font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">Start:</span>
+            <span className="shrink-0">Lokasimu</span>
             <span>→</span>
-            <span className="font-semibold text-[#1A1A1A]">Tujuan:</span>
-            <span className="truncate">{activeRoute.destinationName}</span>
+            <span className="font-semibold text-[#006D37] dark:text-[#06C167]">Tujuan:</span>
+            <span className="truncate font-semibold text-[#1A1A1A] dark:text-[#F5F5F5]">
+              {activeUserRoute.target.merchantName}
+            </span>
+            <span className="hidden truncate text-[#6B6B6B] sm:inline dark:text-[#A3A8A3]">
+              ({activeUserRoute.target.pickupAddress})
+            </span>
           </div>
         </div>
       )}
 
       {/* EXPLORE-EXCLUSIVE FILTERS (Diet & Kondisi Toko — berbeda dari kategori di Home) */}
       <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#6B6B6B]">
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#6B6B6B] dark:text-[#A3A8A3]">
           <SlidersHorizontal className="h-3.5 w-3.5" />
         </span>
         {(
@@ -779,7 +1123,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
               className={`min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors ${
                 active
                   ? 'border-[#06C167] bg-[#06C167] text-[#00210D]'
-                  : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6]'
+                  : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]'
               }`}
             >
               {active ? '✓ ' : ''}
@@ -793,8 +1137,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
           onClick={() => setOnlyUnstamped((v) => !v)}
           className={`min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors ${
             onlyUnstamped
-              ? 'border-black bg-black text-white'
-              : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6]'
+              ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-[#0D0E0D]'
+              : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]'
           }`}
         >
           Belum Di-Stamp
@@ -805,8 +1149,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
           onClick={() => setOnlyUrgent((v) => !v)}
           className={`min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors ${
             onlyUrgent
-              ? 'border-[#B42318] bg-[#FFF0ED] text-[#B42318]'
-              : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6]'
+              ? 'border-[#B42318] bg-[#FFF0ED] text-[#B42318] dark:border-[#FF6B57] dark:bg-[#3A1B18] dark:text-[#FCA5A5]'
+              : 'border-[#E5E5E5] bg-white text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2A2D2A] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]'
           }`}
         >
           Segera Habis
@@ -827,7 +1171,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             const delta = e.deltaY < 0 ? 0.15 : -0.15;
             setZoom((z) => clamp(Number((z + delta).toFixed(2)), 0.75, 2.2));
           }}
-          className={`relative h-[390px] touch-none overflow-hidden rounded-2xl border border-[#E5E5E5] bg-[#EAE7E7] select-none sm:h-[470px] lg:col-span-7 lg:h-[520px] ${
+          className={`relative h-[390px] touch-none overflow-hidden rounded-2xl border border-[#E5E5E5] bg-[#EAE7E7] select-none sm:h-[470px] lg:col-span-7 lg:h-[520px] dark:border-[#2A2D2A] dark:bg-[#141714] ${
             isPanningMap ? 'cursor-grabbing' : 'cursor-grab'
           }`}
           aria-label="Peta interaktif Toko TuGuTuGu"
@@ -849,51 +1193,149 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
               aria-hidden="true"
             >
               {/* Extended canvas fabric so panning never exposes empty edges */}
-              <rect x="-300" y="-300" width="1000" height="900" fill="#F0EDED" />
-              <rect x="20" y="25" width="75" height="55" rx="8" fill="#E3ECE5" />
-              <rect x="275" y="185" width="90" height="80" rx="8" fill="#E3ECE5" />
-              <rect x="135" y="105" width="46" height="36" rx="8" fill="#E3ECE5" />
+              <rect
+                x="-300"
+                y="-300"
+                width="1000"
+                height="900"
+                fill="#F0EDED"
+                className="dark:fill-[#141714]"
+              />
+              {/* Parks & green spaces */}
+              <rect
+                x="24"
+                y="24"
+                width="60"
+                height="44"
+                rx="8"
+                fill="#E3ECE5"
+                className="dark:fill-[#1B261E]"
+              />
+              <rect
+                x="330"
+                y="180"
+                width="76"
+                height="68"
+                rx="8"
+                fill="#E3ECE5"
+                className="dark:fill-[#1B261E]"
+              />
+              <rect
+                x="86"
+                y="102"
+                width="44"
+                height="34"
+                rx="8"
+                fill="#E3ECE5"
+                className="dark:fill-[#1B261E]"
+              />
 
-              {/* Major Jakarta Selatan & Pusat arterial roads */}
-              <path d="M-120 62 L520 94" stroke="#FFFFFF" strokeWidth="9" />
-              <path d="M-120 165 L520 138" stroke="#FFFFFF" strokeWidth="11" />
-              <path d="M-120 244 L520 222" stroke="#FFFFFF" strokeWidth="7" />
-              <path d="M84 -90 L114 390" stroke="#FFFFFF" strokeWidth="8" />
-              <path d="M214 -90 L188 390" stroke="#FFFFFF" strokeWidth="12" />
-              <path d="M312 -90 L334 390" stroke="#FFFFFF" strokeWidth="8" />
+              {/* Building footprints strictly inside city blocks (never blocking streets) */}
+              {MAP_BUILDING_BLOCKS.map((b, idx) => (
+                <rect
+                  key={idx}
+                  x={b.x * 4}
+                  y={b.y * 3}
+                  width={b.w * 4}
+                  height={b.h * 3}
+                  rx="4"
+                  fill="#E4DFDF"
+                  stroke="#D5CFCF"
+                  strokeWidth="0.8"
+                  className="dark:fill-[#202420] dark:stroke-[#2A2F2A]"
+                />
+              ))}
+
+              {/* Road Network (rendered directly from MAP_ROAD_EDGES so route always stays on roads) */}
+              {MAP_ROAD_EDGES.map((edge, idx) => {
+                const a = MAP_ROAD_NODES[edge.from];
+                const b = MAP_ROAD_NODES[edge.to];
+                return (
+                  <g key={`road-${idx}`}>
+                    <line
+                      x1={a.x * 4}
+                      y1={a.y * 3}
+                      x2={b.x * 4}
+                      y2={b.y * 3}
+                      stroke="#DFDADA"
+                      strokeWidth={edge.arterial ? 11 : 7.5}
+                      strokeLinecap="round"
+                      className="dark:stroke-[#111311]"
+                    />
+                    <line
+                      x1={a.x * 4}
+                      y1={a.y * 3}
+                      x2={b.x * 4}
+                      y2={b.y * 3}
+                      stroke="#FFFFFF"
+                      strokeWidth={edge.arterial ? 8.5 : 5.5}
+                      strokeLinecap="round"
+                      className="dark:stroke-[#2D322D]"
+                    />
+                  </g>
+                );
+              })}
 
               {/* Neighborhood labels */}
-              <text x="150" y="128" fontSize="10" fill="#8C8686" fontWeight="700">
+              <text
+                x="150"
+                y="128"
+                fontSize="10"
+                fill="#8C8686"
+                fontWeight="700"
+                className="dark:fill-[#7D857E]"
+              >
                 SENOPATI
               </text>
-              <text x="272" y="114" fontSize="10" fill="#8C8686" fontWeight="700">
+              <text
+                x="272"
+                y="114"
+                fontSize="10"
+                fill="#8C8686"
+                fontWeight="700"
+                className="dark:fill-[#7D857E]"
+              >
                 SCBD
               </text>
-              <text x="96" y="220" fontSize="10" fill="#8C8686" fontWeight="700">
+              <text
+                x="96"
+                y="238"
+                fontSize="10"
+                fill="#8C8686"
+                fontWeight="700"
+                className="dark:fill-[#7D857E]"
+              >
                 KEMANG
               </text>
-              <text x="242" y="54" fontSize="10" fill="#8C8686" fontWeight="700">
+              <text
+                x="242"
+                y="54"
+                fontSize="10"
+                fill="#8C8686"
+                fontWeight="700"
+                className="dark:fill-[#7D857E]"
+              >
                 MENTENG
               </text>
 
-              {/* Commute Route Polyline */}
-              {mode === 'route' && (
+              {/* Street Route Polyline from User -> Selected Toko */}
+              {mode === 'route' && activeUserRoute && (
                 <>
                   <polyline
-                    points={polylinePoints}
+                    points={activeUserRoute.polylineString}
                     fill="none"
-                    stroke="#000000"
-                    strokeOpacity="0.18"
-                    strokeWidth="8"
+                    stroke="#00210D"
+                    strokeOpacity="0.22"
+                    strokeWidth="7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className="dark:stroke-[#06C167] dark:stroke-opacity-30"
                   />
                   <polyline
-                    points={polylinePoints}
+                    points={activeUserRoute.polylineString}
                     fill="none"
                     stroke="#06C167"
                     strokeWidth="4"
-                    strokeDasharray="8 6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
@@ -902,19 +1344,19 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             </svg>
           </div>
 
-          {/* ROUTE ORIGIN & DESTINATION MARKERS (Screen-space crisp) */}
-          {mode === 'route' && (
+          {/* ROUTE START & DESTINATION BADGES (Screen-space crisp) */}
+          {mode === 'route' && activeUserRoute && routeDestScreen && (
             <>
               <div
-                className={`pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-black px-2 py-0.5 text-[10px] font-bold text-white shadow-sm ${
+                className={`pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[165%] rounded-full border-2 border-white bg-black px-2 py-0.5 text-[10px] font-bold text-white shadow-sm dark:border-[#1E211E] dark:bg-[#1E211E] ${
                   isPanningMap ? '' : 'transition-all duration-300 ease-out'
                 }`}
-                style={{ left: `${routeOriginScreen.x}%`, top: `${routeOriginScreen.y}%` }}
+                style={{ left: `${userScreenPos.x}%`, top: `${userScreenPos.y}%` }}
               >
-                Asal
+                Start · Kamu
               </div>
               <div
-                className={`pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#006D37] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm ${
+                className={`pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-[165%] rounded-full border-2 border-white bg-[#006D37] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm dark:border-[#1E211E] dark:bg-[#06C167] dark:text-[#00210D] ${
                   isPanningMap ? '' : 'transition-all duration-300 ease-out'
                 }`}
                 style={{ left: `${routeDestScreen.x}%`, top: `${routeDestScreen.y}%` }}
@@ -933,7 +1375,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             title="Posisimu saat ini"
           >
             <span className="absolute -inset-2 rounded-full bg-[#06C167]/20" />
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-black text-white shadow-md">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-black text-white shadow-md dark:border-[#1E211E] dark:bg-[#06C167] dark:text-[#00210D]">
               <Navigation className="h-3.5 w-3.5" />
             </div>
           </div>
@@ -962,7 +1404,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   }`}
                   aria-label={`Cluster ${cluster.pins.length} Toko, ketuk untuk perbesar`}
                 >
-                  <div className="relative flex items-center gap-1.5 rounded-full border-2 border-white bg-black px-2.5 py-1.5 text-white shadow-md">
+                  <div className="relative flex items-center gap-1.5 rounded-full border-2 border-white bg-black px-2.5 py-1.5 text-white shadow-md dark:border-[#2A2D2A] dark:bg-[#161816]">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06C167] font-display text-[11px] font-bold text-[#00210D] tabular-nums">
                       {cluster.pins.length}
                     </span>
@@ -978,7 +1420,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             const pin = cluster.pins[0];
             const isSelected = focusedListing?.merchantId === pin.merchantId;
             const isStamped = collectedStamps.includes(pin.merchantId);
-            const isFree = pin.discountedPrice === 0;
+            const isFree = isFreeListing(pin);
 
             return (
               <button
@@ -994,10 +1436,10 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                 <div
                   className={`relative flex items-center gap-1 rounded-full border px-2.5 py-1 font-display text-[11px] font-bold shadow-sm tabular-nums ${
                     isSelected
-                      ? 'border-white bg-black text-white ring-2 ring-[#06C167]'
+                      ? 'border-white bg-black text-white ring-2 ring-[#06C167] dark:border-[#06C167] dark:bg-[#0D0E0D]'
                       : isFree
                       ? 'border-[#006D37] bg-[#06C167] text-[#00210D]'
-                      : 'border-[#E5E5E5] bg-white text-[#1A1A1A]'
+                      : 'border-[#E5E5E5] bg-white text-[#1A1A1A] dark:border-[#343934] dark:bg-[#1E211E] dark:text-[#F5F5F5]'
                   }`}
                 >
                   {isStamped ? (
@@ -1005,7 +1447,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                       <Check className="h-2.5 w-2.5 stroke-[3]" />
                     </span>
                   ) : (
-                    <span className="h-2.5 w-2.5 rounded-full border-2 border-[#06C167] bg-white" />
+                    <span className="h-2.5 w-2.5 rounded-full border-2 border-[#06C167] bg-white dark:bg-[#161816]" />
                   )}
                   <span>{formatCompactRupiah(pin.discountedPrice)}</span>
                 </div>
@@ -1015,9 +1457,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
           {/* TOP-LEFT MAP CONTEXT & CLUSTER STATUS CHIP */}
           <div className="pointer-events-none absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
-            <div className="rounded-xl bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-[#1A1A1A] shadow-xs backdrop-blur-xs">
+            <div className="rounded-xl bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-[#1A1A1A] shadow-xs backdrop-blur-xs dark:border dark:border-[#2E322E] dark:bg-[#161816]/95 dark:text-[#F5F5F5]">
               <span className="tabular-nums">{viewportListings.length}</span> bag di area peta ·{' '}
-              <span className="font-mono text-[10px] text-[#006D37]">
+              <span className="font-mono text-[10px] text-[#006D37] dark:text-[#06C167]">
                 {zoom.toFixed(1)}×{isClusteringActive ? ' Cluster' : ''}
               </span>
             </div>
@@ -1028,18 +1470,18 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             <button
               type="button"
               onClick={handleCenterUserLocation}
-              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-white/95 px-3 text-xs font-bold text-[#1A1A1A] shadow-sm backdrop-blur-xs transition-colors hover:bg-[#F6F6F6] active:scale-[0.98]"
+              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#E5E5E5] bg-white/95 px-3 text-xs font-bold text-[#1A1A1A] shadow-sm backdrop-blur-xs transition-colors hover:bg-[#F6F6F6] active:scale-[0.98] dark:border-[#2E322E] dark:bg-[#161816]/95 dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
             >
-              <LocateFixed className="h-4 w-4 text-[#006D37]" />
+              <LocateFixed className="h-4 w-4 text-[#006D37] dark:text-[#06C167]" />
               <span>Lokasi saya</span>
             </button>
 
-            <div className="flex flex-col overflow-hidden rounded-xl border border-[#E5E5E5] bg-white/95 shadow-sm backdrop-blur-xs">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-[#E5E5E5] bg-white/95 shadow-sm backdrop-blur-xs dark:border-[#2E322E] dark:bg-[#161816]/95">
               <button
                 type="button"
                 onClick={() => setZoom((z) => clamp(Number((z + 0.25).toFixed(2)), 0.75, 2.2))}
                 aria-label="Perbesar peta"
-                className="flex h-9 w-9 items-center justify-center border-b border-[#E5E5E5] text-[#1A1A1A] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center border-b border-[#E5E5E5] text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2E322E] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -1047,7 +1489,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                 type="button"
                 onClick={() => setZoom((z) => clamp(Number((z - 0.25).toFixed(2)), 0.75, 2.2))}
                 aria-label="Perkecil peta (aktifkan cluster)"
-                className="flex h-9 w-9 items-center justify-center text-[#1A1A1A] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center text-[#1A1A1A] hover:bg-[#F6F6F6] dark:text-[#F5F5F5] dark:hover:bg-[#1E211E]"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -1056,15 +1498,15 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
           {/* KARTU RINGKAS SAAT TAP PIN (Nama, Harga, Stok, Jam Ambil, Jarak Jalan Kaki, Reservasi & Check-in) */}
           {showPinCard && focusedListing && (
-            <div className="absolute inset-x-3 bottom-3 z-40 rounded-2xl border border-[#E5E5E5] bg-white/98 p-3.5 shadow-xl backdrop-blur-md">
+            <div className="absolute inset-x-3 bottom-3 z-40 rounded-2xl border border-[#E5E5E5] bg-white/98 p-3.5 shadow-xl backdrop-blur-md dark:border-[#2E322E] dark:bg-[#161816]/98">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-[#006D37]">
+                    <span className="text-[11px] font-semibold text-[#006D37] dark:text-[#06C167]">
                       Toko · {focusedListing.neighborhood}
                     </span>
                     {focusedUrgent && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#FFF0ED] px-2 py-0.5 text-[10px] font-bold text-[#B42318]">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#FFF0ED] px-2 py-0.5 text-[10px] font-bold text-[#B42318] dark:bg-[#3A1B18] dark:text-[#FCA5A5]">
                         <AlertCircle className="h-3 w-3" />
                         Segera habis ({focusedMinutesLeft} mnt)
                       </span>
@@ -1077,54 +1519,94 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                     )}
                   </div>
 
-                  <h3 className="mt-1 truncate font-display text-sm font-bold text-[#1A1A1A]">
+                  <h3 className="mt-1 truncate font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                     {focusedListing.merchantName}
                   </h3>
-                  <p className="truncate text-xs text-[#4C4546]">{focusedListing.title}</p>
+                  <p className="truncate text-xs text-[#4C4546] dark:text-[#C8CDC8]">
+                    {focusedListing.title}
+                  </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setShowPinCard(false)}
                   aria-label="Tutup kartu pin"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#6B6B6B] hover:text-[#1A1A1A]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#6B6B6B] hover:text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#A3A8A3] dark:hover:text-[#F5F5F5]"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
+              {/* Pilih variasi bag jika toko ini punya lebih dari 1 bag (mis. Diskon vs FREE) */}
+              {focusedMerchantBags.length > 1 && (
+                <div className="no-scrollbar mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                  {focusedMerchantBags.map((mb) => {
+                    const mbActive = mb.id === focusedListing.id;
+                    const mbFree = isFreeListing(mb);
+                    return (
+                      <button
+                        key={mb.id}
+                        type="button"
+                        onClick={() => setFocusedListingId(mb.id)}
+                        className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                          mbActive
+                            ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-[#0D0E0D]'
+                            : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]'
+                        }`}
+                      >
+                        {mbFree ? 'FREE' : formatCompactRupiah(mb.discountedPrice)} · {mb.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Metadata Ringkas: Harga, Sisa Stok, Jam Ambil, Jarak Jalan Kaki */}
-              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE7E7] pt-2.5">
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE7E7] pt-2.5 dark:border-[#2A2D2A]">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-display text-base font-bold text-[#006D37] tabular-nums">
+                  <span className="font-display text-base font-bold text-[#006D37] tabular-nums dark:text-[#06C167]">
                     {formatRupiah(focusedListing.discountedPrice)}
                   </span>
-                  {focusedListing.discountedPrice > 0 && (
-                    <span className="text-[11px] text-[#6B6B6B] line-through tabular-nums">
+                  {!focusedIsFree && (
+                    <span className="text-[11px] text-[#6B6B6B] line-through tabular-nums dark:text-[#8E948E]">
                       {formatRupiah(focusedListing.originalPrice)}
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium text-[#4C4546]">
-                  <span className="font-semibold text-[#1A1A1A] tabular-nums">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium text-[#4C4546] dark:text-[#C8CDC8]">
+                  <span className="font-semibold text-[#1A1A1A] tabular-nums dark:text-[#F5F5F5]">
                     Sisa {focusedListing.stock}
                   </span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Clock className="h-3 w-3 text-[#6B6B6B]" />
+                    <Clock className="h-3 w-3 text-[#6B6B6B] dark:text-[#A3A8A3]" />
                     {focusedListing.pickupWindow}
                   </span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Footprints className="h-3 w-3 text-[#006D37]" />
-                    {estimateWalkMinutes(focusedListing.distanceKm)} mnt ({focusedListing.distanceKm.toFixed(1)} km)
+                    <Footprints className="h-3 w-3 text-[#006D37] dark:text-[#06C167]" />
+                    {estimateWalkMinutes(focusedListing.distanceKm)} mnt (
+                    {focusedListing.distanceKm.toFixed(1)} km)
                   </span>
                 </div>
               </div>
 
-              {/* Tombol Aksi: Check-in, Split/Detail, dan Reservasi */}
+              {/* Tombol Aksi: Rute, Check-in, Split, dan Reservasi / Klaim Gratis */}
               <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRouteToListing(focusedListing, true)}
+                  className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-xl border px-2.5 text-xs font-bold transition-colors ${
+                    mode === 'route'
+                      ? 'border-[#06C167] bg-[#06C167]/15 text-[#006D37] dark:text-[#06C167]'
+                      : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]'
+                  }`}
+                >
+                  <Route className="h-3.5 w-3.5" />
+                  <span>Rute</span>
+                </button>
+
                 <button
                   type="button"
                   disabled={focusedStamped}
@@ -1132,10 +1614,10 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                     onCollectStamp(focusedListing.merchantId);
                     triggerToast(`Stempel ${focusedListing.merchantName} dikoleksi!`);
                   }}
-                  className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-xl border px-3 text-xs font-bold transition-colors ${
+                  className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-xl border px-2.5 text-xs font-bold transition-colors ${
                     focusedStamped
-                      ? 'border-[#06C167]/40 bg-[#06C167]/15 text-[#006D37]'
-                      : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7]'
+                      ? 'border-[#06C167]/40 bg-[#06C167]/15 text-[#006D37] dark:text-[#06C167]'
+                      : 'border-[#E5E5E5] bg-[#F6F6F6] text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]'
                   }`}
                 >
                   <Stamp className="h-3.5 w-3.5" />
@@ -1146,7 +1628,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   type="button"
                   onClick={() => setSplitListing(focusedListing)}
                   aria-label="Patungan Split Bag"
-                  className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-xl border border-[#E5E5E5] bg-white px-2.5 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6]"
+                  className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-xl border border-[#E5E5E5] bg-white px-2.5 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                 >
                   <Users className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Split</span>
@@ -1156,12 +1638,12 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   type="button"
                   onClick={() => onQuickAction(focusedListing)}
                   className={`min-h-[38px] flex-1 rounded-xl px-3 font-display text-xs font-bold ${
-                    focusedListing.discountedPrice === 0
+                    focusedIsFree
                       ? 'bg-[#06C167] text-[#00210D] hover:bg-[#05b05d]'
-                      : 'bg-black text-white hover:bg-[#1B1B1B]'
+                      : 'bg-black text-white hover:bg-[#1B1B1B] dark:bg-white dark:text-[#0D0E0D] dark:hover:bg-[#E5E5E5]'
                   }`}
                 >
-                  {focusedListing.discountedPrice === 0 ? 'Klaim Gratis' : 'Reservasi'}
+                  {focusedIsFree ? 'Klaim Gratis' : 'Reservasi'}
                 </button>
               </div>
             </div>
@@ -1169,7 +1651,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
           {/* Petunjuk geser halus di bawah peta ketika kartu pin belum dibuka */}
           {!showPinCard && (
-            <div className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/75 px-3 py-1 text-[10px] font-medium text-white backdrop-blur-xs">
+            <div className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/75 px-3 py-1 text-[10px] font-medium text-white backdrop-blur-xs dark:border dark:border-[#2E322E] dark:bg-[#161816]/90">
               Geser peta atau ketuk pin Toko
             </div>
           )}
@@ -1182,7 +1664,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             transform: sheetDragDelta !== 0 ? `translateY(${sheetDragDelta * 0.25}px)` : undefined,
           }}
         >
-          <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white shadow-xs">
+          <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#E5E5E5] bg-white shadow-xs dark:border-[#2A2D2A] dark:bg-[#161816]">
             {/* Draggable Sheet Handle (drag naik/turun atau tap) */}
             <div
               onPointerDown={handleSheetHandlePointerDown}
@@ -1197,29 +1679,29 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                 }
               }}
               aria-label="Geser naik atau turun untuk mengatur tinggi daftar merchant"
-              className="cursor-grab touch-none border-b border-[#E5E5E5] px-4 pt-2 pb-3 select-none active:cursor-grabbing"
+              className="cursor-grab touch-none border-b border-[#E5E5E5] px-4 pt-2 pb-3 select-none active:cursor-grabbing dark:border-[#2A2D2A]"
             >
               <div className="mb-2 flex justify-center">
-                <span className="h-1.5 w-10 rounded-full bg-[#D8D5D5]" />
+                <span className="h-1.5 w-10 rounded-full bg-[#D8D5D5] dark:bg-[#3A3E3A]" />
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11px] font-semibold text-[#006D37]">
+                  <p className="text-[11px] font-semibold text-[#006D37] dark:text-[#06C167]">
                     {mode === 'route'
                       ? 'Di Sepanjang Rute & Area Peta'
                       : 'Tampil Sesuai Area Peta'}
                   </p>
-                  <h2 className="font-display text-sm font-bold text-[#1A1A1A] tabular-nums">
+                  <h2 className="font-display text-sm font-bold text-[#1A1A1A] tabular-nums dark:text-[#F5F5F5]">
                     {viewportListings.length} Bag di Area Ini
                     {filteredListings.length > viewportListings.length && (
-                      <span className="ml-1.5 font-sans text-xs font-normal text-[#6B6B6B]">
+                      <span className="ml-1.5 font-sans text-xs font-normal text-[#6B6B6B] dark:text-[#A3A8A3]">
                         (dari {filteredListings.length} total)
                       </span>
                     )}
                   </h2>
                 </div>
 
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F6F6F6] text-[#1A1A1A] dark:bg-[#1E211E] dark:text-[#F5F5F5]">
                   {sheetSnap === 'full' ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
@@ -1232,25 +1714,25 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             {/* Empty State: Tidak ada filter cocok OR viewport digeser ke area kosong */}
             {filteredListings.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-                <Compass className="h-9 w-9 text-[#6B6B6B]" />
-                <h3 className="mt-3 font-display text-base font-bold text-[#1A1A1A]">
+                <Compass className="h-9 w-9 text-[#6B6B6B] dark:text-[#A3A8A3]" />
+                <h3 className="mt-3 font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                   Belum ada bag untuk filter ini
                 </h3>
-                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#6B6B6B]">
+                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#6B6B6B] dark:text-[#A3A8A3]">
                   Coba longgarkan filter atau aktifkan alert agar kamu dikabari otomatis.
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <button
                     type="button"
                     onClick={resetAllFilters}
-                    className="min-h-[40px] rounded-lg bg-black px-3.5 text-xs font-semibold text-white"
+                    className="min-h-[40px] rounded-lg bg-black px-3.5 text-xs font-semibold text-white dark:bg-white dark:text-[#0D0E0D]"
                   >
                     Reset Filter
                   </button>
                   <button
                     type="button"
                     onClick={handleActivateRouteAlert}
-                    className="min-h-[40px] rounded-lg border border-[#E5E5E5] bg-[#F6F6F6] px-3.5 text-xs font-semibold text-[#1A1A1A]"
+                    className="min-h-[40px] rounded-lg border border-[#E5E5E5] bg-[#F6F6F6] px-3.5 text-xs font-semibold text-[#1A1A1A] dark:border-[#2E322E] dark:bg-[#1E211E] dark:text-[#F5F5F5]"
                   >
                     + Alert Area Ini
                   </button>
@@ -1258,11 +1740,11 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
               </div>
             ) : viewportListings.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-                <LocateFixed className="h-9 w-9 text-[#006D37]" />
-                <h3 className="mt-3 font-display text-base font-bold text-[#1A1A1A]">
+                <LocateFixed className="h-9 w-9 text-[#006D37] dark:text-[#06C167]" />
+                <h3 className="mt-3 font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                   Tidak ada Toko di area peta ini
                 </h3>
-                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#6B6B6B]">
+                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#6B6B6B] dark:text-[#A3A8A3]">
                   Geser kembali peta ke area ramai atau zoom out untuk melihat Toko terdekat.
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1279,7 +1761,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                       setMapCenter({ x: 49, y: 48 });
                       setZoom(0.85);
                     }}
-                    className="min-h-[40px] rounded-lg bg-black px-3.5 text-xs font-semibold text-white"
+                    className="min-h-[40px] rounded-lg bg-black px-3.5 text-xs font-semibold text-white dark:bg-white dark:text-[#0D0E0D]"
                   >
                     Zoom Out Semua Area
                   </button>
@@ -1291,8 +1773,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   className={`space-y-2.5 overflow-y-auto pr-0.5 transition-[max-height] duration-200 ${listMaxHeightClass}`}
                 >
                   {viewportListings.map((item) => {
-                    const isFocused = focusedListing?.merchantId === item.merchantId;
-                    const isFree = item.discountedPrice === 0;
+                    const isFocused = focusedListing?.id === item.id;
+                    const isFree = isFreeListing(item);
                     const isUrgent = isUrgentListing(item, nowMs);
                     const isStamped = collectedStamps.includes(item.merchantId);
                     const walkMin = estimateWalkMinutes(item.distanceKm);
@@ -1301,9 +1783,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                       <div
                         key={item.id}
                         ref={(el) => {
-                          if (!cardRefs.current[item.merchantId] || isFocused) {
-                            cardRefs.current[item.merchantId] = el;
-                          }
+                          cardRefs.current[item.id] = el;
                         }}
                         onClick={() => handleFocusFromSheetCard(item)}
                         role="button"
@@ -1311,8 +1791,8 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                         onKeyDown={(e) => e.key === 'Enter' && handleFocusFromSheetCard(item)}
                         className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
                           isFocused
-                            ? 'border-black bg-[#F6F6F6] ring-1 ring-black'
-                            : 'border-[#E5E5E5] bg-white hover:bg-[#F6F6F6]'
+                            ? 'border-black bg-[#F6F6F6] ring-1 ring-black dark:border-[#06C167] dark:bg-[#1E211E] dark:ring-[#06C167]'
+                            : 'border-[#E5E5E5] bg-white hover:bg-[#F6F6F6] dark:border-[#2A2D2A] dark:bg-[#161816] dark:hover:bg-[#1E211E]'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -1324,33 +1804,33 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-1">
-                              <p className="truncate text-[11px] font-medium text-[#6B6B6B]">
+                              <p className="truncate text-[11px] font-medium text-[#6B6B6B] dark:text-[#A3A8A3]">
                                 {item.merchantName} · {walkMin} mnt jalan
                               </p>
-                              <span className="shrink-0 text-xs font-bold text-[#006D37] tabular-nums">
+                              <span className="shrink-0 text-xs font-bold text-[#006D37] tabular-nums dark:text-[#06C167]">
                                 {formatCompactRupiah(item.discountedPrice)}
                               </span>
                             </div>
 
-                            <p className="truncate font-display text-xs font-bold text-[#1A1A1A]">
+                            <p className="truncate font-display text-xs font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                               {item.title}
                             </p>
 
                             <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
-                              <span className="text-[#4C4546] tabular-nums">
+                              <span className="text-[#4C4546] tabular-nums dark:text-[#C8CDC8]">
                                 {item.pickupWindow}
                               </span>
-                              <span className="text-[#A6A6A6]">·</span>
-                              <span className="font-semibold text-[#1A1A1A] tabular-nums">
+                              <span className="text-[#A6A6A6] dark:text-[#6B6B6B]">·</span>
+                              <span className="font-semibold text-[#1A1A1A] tabular-nums dark:text-[#F5F5F5]">
                                 Sisa {item.stock}
                               </span>
                               {isUrgent && (
-                                <span className="rounded-full bg-[#FFF0ED] px-1.5 py-0.5 font-bold text-[#B42318]">
+                                <span className="rounded-full bg-[#FFF0ED] px-1.5 py-0.5 font-bold text-[#B42318] dark:bg-[#3A1B18] dark:text-[#FCA5A5]">
                                   Segera habis
                                 </span>
                               )}
                               {isStamped && (
-                                <span className="rounded-full bg-[#06C167]/20 px-1.5 py-0.5 font-bold text-[#006D37]">
+                                <span className="rounded-full bg-[#06C167]/20 px-1.5 py-0.5 font-bold text-[#006D37] dark:text-[#06C167]">
                                   Stamped
                                 </span>
                               )}
@@ -1365,19 +1845,30 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
                         {/* Quick actions saat kartu disorot agar alur lihat -> reservasi super cepat */}
                         {isFocused && (
-                          <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[#E5E5E5] pt-2">
+                          <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[#E5E5E5] pt-2 dark:border-[#2E322E]">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSelectListing(item);
                               }}
-                              className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-3 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7]"
+                              className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-3 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#343934] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                             >
                               Lihat Detail
                             </button>
 
                             <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRouteToListing(item, true);
+                                }}
+                                className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-[#E5E5E5] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#343934] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
+                              >
+                                <Route className="h-3 w-3 text-[#006D37] dark:text-[#06C167]" />
+                                Rute
+                              </button>
                               {!isStamped && (
                                 <button
                                   type="button"
@@ -1386,7 +1877,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                                     onCollectStamp(item.merchantId);
                                     triggerToast(`Stempel ${item.merchantName} dikoleksi!`);
                                   }}
-                                  className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7]"
+                                  className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#343934] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                                 >
                                   Check-in
                                 </button>
@@ -1400,7 +1891,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                                 className={`min-h-[34px] rounded-lg px-3.5 font-display text-[11px] font-bold ${
                                   isFree
                                     ? 'bg-[#06C167] text-[#00210D]'
-                                    : 'bg-black text-white'
+                                    : 'bg-black text-white dark:bg-white dark:text-[#0D0E0D]'
                                 }`}
                               >
                                 {isFree ? 'Klaim Gratis' : 'Reservasi'}
@@ -1421,34 +1912,34 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       {/* ==================== MODAL 1: KOLEKSI STEMPEL TOKO (GAMIFIKASI BERAT DISEMBUNYIKAN VIA FEATURE FLAG) ==================== */}
       {showPokestopHub && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4 dark:bg-black/75"
           onClick={() => setShowPokestopHub(false)}
           role="dialog"
           aria-modal="true"
           aria-label="Koleksi Stempel Toko"
         >
           <div
-            className="flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl"
+            className="flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl dark:border dark:border-[#2A2D2A] dark:bg-[#161816]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-2.5 pb-0.5 sm:hidden">
-              <div className="h-1.5 w-10 rounded-full bg-[#DCD9D9]" />
+              <div className="h-1.5 w-10 rounded-full bg-[#DCD9D9] dark:bg-[#3A3E3A]" />
             </div>
 
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5 dark:border-[#2A2D2A]">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#06C167] text-[#00210D]">
                   <Stamp className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="font-display text-base font-bold text-[#1A1A1A]">
+                  <h2 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                     Koleksi Stempel Toko
                   </h2>
-                  <p className="text-xs text-[#6B6B6B] tabular-nums">
+                  <p className="text-xs text-[#6B6B6B] tabular-nums dark:text-[#A3A8A3]">
                     {collectedStamps.length} dari {allMerchantSpots.length} toko telah di-stamp
                   </p>
                   {EXPLORE_FEATURE_FLAGS.showStreak && (
-                    <p className="flex items-center gap-1 text-xs text-[#6B6B6B]">
+                    <p className="flex items-center gap-1 text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                       <Flame className="h-3.5 w-3.5 text-[#FFB020]" />
                       <span>Streak 4 hari berturut-turut</span>
                     </p>
@@ -1458,7 +1949,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPokestopHub(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1466,7 +1957,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
             {/* Tab Misi Mingguan & Leaderboard hanya tampil jika feature flag diaktifkan */}
             {(EXPLORE_FEATURE_FLAGS.showMissions || EXPLORE_FEATURE_FLAGS.showLeaderboard) && (
-              <div className="grid grid-cols-3 gap-1 border-b border-[#E5E5E5] bg-[#F6F6F6] p-1.5">
+              <div className="grid grid-cols-3 gap-1 border-b border-[#E5E5E5] bg-[#F6F6F6] p-1.5 dark:border-[#2A2D2A] dark:bg-[#141614]">
                 {[
                   { id: 'stamps', label: 'Stempel', enabled: true },
                   {
@@ -1489,7 +1980,9 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                         setPokestopTab(t.id as 'stamps' | 'missions' | 'leaderboard')
                       }
                       className={`min-h-[38px] rounded-lg text-xs font-semibold transition-colors ${
-                        pokestopTab === t.id ? 'bg-black text-white' : 'text-[#6B6B6B]'
+                        pokestopTab === t.id
+                          ? 'bg-black text-white dark:bg-white dark:text-[#0D0E0D]'
+                          : 'text-[#6B6B6B] dark:text-[#A3A8A3]'
                       }`}
                     >
                       {t.label}
@@ -1511,7 +2004,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                           className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
                             stamped
                               ? 'border-[#06C167] bg-[#06C167]/10'
-                              : 'border-[#E5E5E5] bg-[#F6F6F6]'
+                              : 'border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]'
                           }`}
                         >
                           <div className="flex min-w-0 items-center gap-3">
@@ -1519,7 +2012,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 ${
                                 stamped
                                   ? 'border-[#06C167] bg-[#06C167] text-[#00210D]'
-                                  : 'border-[#06C167] bg-white text-[#006D37]'
+                                  : 'border-[#06C167] bg-white text-[#006D37] dark:bg-[#161816] dark:text-[#06C167]'
                               }`}
                             >
                               {stamped ? (
@@ -1529,13 +2022,13 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                               )}
                             </span>
                             <div className="min-w-0">
-                              <p className="text-[10px] font-bold text-[#006D37]">
+                              <p className="text-[10px] font-bold text-[#006D37] dark:text-[#06C167]">
                                 {spot.merchantCategory}
                               </p>
-                              <p className="truncate font-display text-sm font-bold text-[#1A1A1A]">
+                              <p className="truncate font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                                 {spot.merchantName}
                               </p>
-                              <p className="truncate text-[11px] text-[#6B6B6B]">
+                              <p className="truncate text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
                                 {spot.neighborhood} · {spot.pickupAddress}
                               </p>
                             </div>
@@ -1545,13 +2038,16 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                             <button
                               type="button"
                               onClick={() => {
+                                const matched =
+                                  filteredListings.find((l) => l.merchantId === spot.merchantId) ??
+                                  spot;
                                 setShowPokestopHub(false);
                                 setMapCenter({ x: spot.coordinates.x, y: spot.coordinates.y });
                                 setZoom(1.45);
-                                setFocusedMerchantId(spot.merchantId);
+                                setFocusedListingId(matched.id);
                                 setShowPinCard(true);
                               }}
-                              className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7]"
+                              className="min-h-[34px] rounded-lg border border-[#E5E5E5] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A] hover:bg-[#EAE7E7] dark:border-[#343934] dark:bg-[#161816] dark:text-[#F5F5F5] dark:hover:bg-[#272B27]"
                             >
                               Peta
                             </button>
@@ -1562,7 +2058,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                                   onCollectStamp(spot.merchantId);
                                   triggerToast(`Stempel ${spot.merchantName} dikoleksi!`);
                                 }}
-                                className="min-h-[34px] rounded-lg bg-black px-2.5 text-[11px] font-bold text-white"
+                                className="min-h-[34px] rounded-lg bg-black px-2.5 text-[11px] font-bold text-white dark:bg-white dark:text-[#0D0E0D]"
                               >
                                 Check-in
                               </button>
@@ -1576,7 +2072,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   {/* Badge per area disembunyikan via feature flag */}
                   {EXPLORE_FEATURE_FLAGS.showAreaBadges && (
                     <div>
-                      <h3 className="font-display text-sm font-bold text-[#1A1A1A]">
+                      <h3 className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         Badge Area (
                         {
                           EXPLORE_BADGES.filter((b) =>
@@ -1600,30 +2096,32 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                               className={`rounded-xl border p-3.5 ${
                                 unlocked
                                   ? 'border-[#06C167] bg-[#06C167]/10'
-                                  : 'border-[#E5E5E5] bg-[#F6F6F6]'
+                                  : 'border-[#E5E5E5] bg-[#F6F6F6] dark:border-[#2E322E] dark:bg-[#1E211E]'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
                                   <Award
                                     className={`h-5 w-5 shrink-0 ${
-                                      unlocked ? 'text-[#006D37]' : 'text-[#6B6B6B]'
+                                      unlocked
+                                        ? 'text-[#006D37] dark:text-[#06C167]'
+                                        : 'text-[#6B6B6B] dark:text-[#A3A8A3]'
                                     }`}
                                   />
                                   <div>
-                                    <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                                    <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                                       {badge.title}
                                     </p>
-                                    <p className="text-[11px] text-[#6B6B6B]">
+                                    <p className="text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
                                       {badge.description}
                                     </p>
                                   </div>
                                 </div>
-                                <span className="shrink-0 font-mono text-xs font-bold tabular-nums">
+                                <span className="shrink-0 font-mono text-xs font-bold text-[#1A1A1A] tabular-nums dark:text-[#F5F5F5]">
                                   {count}/{target}
                                 </span>
                               </div>
-                              <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                              <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
                                 <div
                                   className="h-full rounded-full bg-[#06C167] transition-all"
                                   style={{ width: `${pct}%` }}
@@ -1646,14 +2144,14 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                     return (
                       <div
                         key={mis.id}
-                        className="rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5"
+                        className="rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                            <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                               {mis.title}
                             </p>
-                            <p className="mt-0.5 text-xs font-semibold text-[#006D37]">
+                            <p className="mt-0.5 text-xs font-semibold text-[#006D37] dark:text-[#06C167]">
                               Hadiah: {mis.rewardLabel}
                             </p>
                           </div>
@@ -1661,13 +2159,13 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                             className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums ${
                               done
                                 ? 'bg-[#06C167] text-[#00210D]'
-                                : 'bg-white text-[#1A1A1A]'
+                                : 'bg-white text-[#1A1A1A] dark:bg-[#161816] dark:text-[#F5F5F5]'
                             }`}
                           >
                             {mis.progress}/{mis.target}
                           </span>
                         </div>
-                        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
                           <div
                             className="h-full rounded-full bg-[#06C167]"
                             style={{ width: `${pct}%` }}
@@ -1687,7 +2185,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                       className={`flex items-center justify-between rounded-xl border p-3.5 ${
                         entry.isMe
                           ? 'border-[#06C167] bg-[#06C167]/10'
-                          : 'border-[#E5E5E5] bg-white'
+                          : 'border-[#E5E5E5] bg-white dark:border-[#2E322E] dark:bg-[#1E211E]'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -1695,21 +2193,21 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                           className={`flex h-7 w-7 items-center justify-center rounded-full font-display text-xs font-bold ${
                             idx === 0
                               ? 'bg-[#FFB020] text-[#1A1A1A]'
-                              : 'bg-[#F6F6F6] text-[#1A1A1A]'
+                              : 'bg-[#F6F6F6] text-[#1A1A1A] dark:bg-[#161816] dark:text-[#F5F5F5]'
                           }`}
                         >
                           #{idx + 1}
                         </span>
                         <div>
-                          <p className="font-display text-sm font-bold text-[#1A1A1A]">
+                          <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                             {entry.name}
                           </p>
-                          <p className="text-[11px] text-[#6B6B6B]">
+                          <p className="text-[11px] text-[#6B6B6B] dark:text-[#A3A8A3]">
                             {entry.area} · {entry.bagsRescued} bag
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 font-display text-sm font-bold text-[#006D37] tabular-nums">
+                      <div className="flex items-center gap-1 font-display text-sm font-bold text-[#006D37] tabular-nums dark:text-[#06C167]">
                         <Trophy className="h-4 w-4" />
                         {entry.kgSaved.toFixed(1)} kg
                       </div>
@@ -1725,24 +2223,24 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       {/* ==================== MODAL 2: IMPACT TRACKER + SHARE CARD ==================== */}
       {showImpactModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4 dark:bg-black/75"
           onClick={() => setShowImpactModal(false)}
           role="dialog"
           aria-modal="true"
           aria-label="Impact Tracker"
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl"
+            className="w-full max-w-md overflow-hidden rounded-t-3xl bg-white sm:rounded-2xl dark:border dark:border-[#2A2D2A] dark:bg-[#161816]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-4">
-              <h2 className="font-display text-base font-bold text-[#1A1A1A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-4 dark:border-[#2A2D2A]">
+              <h2 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                 Impact Penyelamatanmu
               </h2>
               <button
                 type="button"
                 onClick={() => setShowImpactModal(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1750,7 +2248,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
 
             <div className="p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               {/* Shareable Dark Impact Card */}
-              <div className="rounded-2xl bg-[#141414] p-5 text-white">
+              <div className="rounded-2xl bg-[#141414] p-5 text-white dark:border dark:border-[#2A2D2A] dark:bg-[#1E211E]">
                 <div className="flex items-center justify-between">
                   <span className="rounded-full bg-[#06C167] px-2.5 py-0.5 text-[11px] font-bold text-[#00210D]">
                     TuGuTuGu Impact Card
@@ -1797,24 +2295,24 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       {/* ==================== MODAL 3: WISHLIST ALERTS & PICKUP REMINDER ==================== */}
       {showAlertsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4 dark:bg-black/75"
           onClick={() => setShowAlertsModal(false)}
           role="dialog"
           aria-modal="true"
           aria-label="Alert dan Wishlist"
         >
           <div
-            className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white sm:rounded-2xl"
+            className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white sm:rounded-2xl dark:border dark:border-[#2A2D2A] dark:bg-[#161816]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-4">
-              <h2 className="font-display text-base font-bold text-[#1A1A1A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-4 dark:border-[#2A2D2A]">
+              <h2 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                 Alert &amp; Wishlist Stok
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAlertsModal(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1823,8 +2321,10 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
             <div className="space-y-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               {/* Pickup Reminder Banner */}
               <div className="rounded-xl border border-[#06C167]/40 bg-[#06C167]/10 p-3.5 text-xs">
-                <p className="font-bold text-[#006D37]">Pengingat Pickup Aktif</p>
-                <p className="mt-0.5 text-[#1A1A1A]">
+                <p className="font-bold text-[#006D37] dark:text-[#06C167]">
+                  Pengingat Pickup Aktif
+                </p>
+                <p className="mt-0.5 text-[#1A1A1A] dark:text-[#E5E5E5]">
                   Atelier Boulangerie siap diambil pukul <strong>19:30 – 21:00</strong> hari ini.
                 </p>
               </div>
@@ -1833,13 +2333,13 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                 {alerts.map((al) => (
                   <label
                     key={al.id}
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5"
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-display text-sm font-bold text-[#1A1A1A]">
+                      <p className="truncate font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                         {al.title}
                       </p>
-                      <p className="text-xs text-[#6B6B6B]">{al.criteria}</p>
+                      <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">{al.criteria}</p>
                     </div>
                     <input
                       type="checkbox"
@@ -1858,7 +2358,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
               <button
                 type="button"
                 onClick={handleActivateRouteAlert}
-                className="min-h-[46px] w-full rounded-xl bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B]"
+                className="min-h-[46px] w-full rounded-xl bg-black font-display text-xs font-semibold text-white hover:bg-[#1B1B1B] dark:bg-white dark:text-[#0D0E0D] dark:hover:bg-[#E5E5E5]"
               >
                 + Tambah Alert dari Mode Explore Saat Ini
               </button>
@@ -1870,43 +2370,45 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
       {/* ==================== MODAL 4: SPLIT BAG / SHARE BAG UI ==================== */}
       {splitListing && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4 dark:bg-black/75"
           onClick={() => setSplitListing(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Patungan Split Bag"
         >
           <div
-            className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl"
+            className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl dark:border dark:border-[#2A2D2A] dark:bg-[#161816]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3 dark:border-[#2A2D2A]">
               <div>
-                <p className="text-xs font-semibold text-[#006D37]">Patungan &amp; Bagikan</p>
-                <h2 className="font-display text-base font-bold text-[#1A1A1A]">
+                <p className="text-xs font-semibold text-[#006D37] dark:text-[#06C167]">
+                  Patungan &amp; Bagikan
+                </p>
+                <h2 className="font-display text-base font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                   Split Bag Berdua
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSplitListing(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B6B6B] hover:bg-[#F6F6F6] dark:text-[#A3A8A3] dark:hover:bg-[#1E211E]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-4 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5">
-              <p className="font-display text-sm font-bold text-[#1A1A1A]">
+            <div className="mt-4 rounded-xl border border-[#E5E5E5] bg-[#F6F6F6] p-3.5 dark:border-[#2E322E] dark:bg-[#1E211E]">
+              <p className="font-display text-sm font-bold text-[#1A1A1A] dark:text-[#F5F5F5]">
                 {splitListing.title}
               </p>
-              <p className="text-xs text-[#6B6B6B]">
+              <p className="text-xs text-[#6B6B6B] dark:text-[#A3A8A3]">
                 {splitListing.merchantName} · Pickup {splitListing.pickupWindow}
               </p>
-              <div className="mt-3 flex items-center justify-between border-t border-[#E5E5E5] pt-2.5 text-sm">
-                <span className="text-[#6B6B6B]">Patungan 2 orang:</span>
-                <span className="font-display text-lg font-bold text-[#006D37] tabular-nums">
-                  {splitListing.discountedPrice === 0
+              <div className="mt-3 flex items-center justify-between border-t border-[#E5E5E5] pt-2.5 text-sm dark:border-[#2E322E]">
+                <span className="text-[#6B6B6B] dark:text-[#A3A8A3]">Patungan 2 orang:</span>
+                <span className="font-display text-lg font-bold text-[#006D37] tabular-nums dark:text-[#06C167]">
+                  {isFreeListing(splitListing)
                     ? 'FREE'
                     : `${formatRupiah(Math.ceil(splitListing.discountedPrice / 2))} / org`}
                 </span>
@@ -1929,7 +2431,7 @@ export const ConsumerExplore: React.FC<ConsumerExploreProps> = ({
                   setSplitListing(null);
                   onQuickAction(target);
                 }}
-                className="flex min-h-[46px] items-center justify-center rounded-xl bg-black font-display text-xs font-semibold text-white"
+                className="flex min-h-[46px] items-center justify-center rounded-xl bg-black font-display text-xs font-semibold text-white dark:bg-white dark:text-[#0D0E0D]"
               >
                 Langsung Reservasi
               </button>
